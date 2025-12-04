@@ -1,0 +1,44 @@
+{
+  "environment": "test",
+  "service": {
+    "port": 3001
+  },
+  "postgres": {
+    "username": "postgres",
+    "password": "postgres",
+    "database": "shipsmart_test_db",
+    "host": "localhost",
+    "port": 5432,
+    "dialect": "postgres",
+    "pool": {
+      "max": 3,
+      "min": 0,
+      "acquire": 60000,
+      "idle": 10000
+    }
+  },
+  "aws": {
+    "region": "us-east-1",
+    "access_key": "test",
+    "secret_access_key": "test",
+    "s3": {
+      "bucket_prefix": "shipsmart-test",
+      "endpoint": "http://localhost:9090"
+    }
+  },
+  "bull": {
+    "worker": {
+      "queue_name": "shipsmart-worker-test"
+    },
+    "default_redis": {
+      "port": 6379,
+      "host": "127.0.0.1",
+      "password": "redis"
+    },
+    "advanced_settings": {
+      "lock_duration": 600000,
+      "lock_renew_time": 300000,
+      "stalled_interval": 600000
+    }
+  }
+}

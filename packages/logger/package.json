@@ -1,0 +1,9 @@
+{
+  "name": "@shipsmart/logger",
+  "version": "1.0.0",
+  "main": "./lib/index.js",
+  "dependencies": {
+    "@shipsmart/env": "1.0.0",
+    "winston": "^3.2.1"
+  }
+}

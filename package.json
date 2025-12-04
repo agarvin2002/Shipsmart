@@ -1,0 +1,32 @@
+{
+  "name": "shipsmart-node-service",
+  "private": true,
+  "workspaces": [
+    "packages/**",
+    "service"
+  ],
+  "scripts": {
+    "bootstrap": "lerna bootstrap --use-workspaces",
+    "lint": "eslint",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:ps": "docker-compose ps",
+    "docker:restart": "docker-compose restart",
+    "docker:clean": "docker-compose down -v"
+  },
+  "packageManager": "yarn@3.6.1",
+  "devDependencies": {
+    "eslint": "^7.16.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1",
+    "lerna": "^3.20.2"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.817.0",
+    "bull": "^4.1.1",
+    "bull-arena": "^3.20.1",
+    "pg": "^8.5.1",
+    "sequelize": "^5.8.9"
+  }
+}

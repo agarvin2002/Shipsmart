@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: shipsmart-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-shipsmart_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shipsmart-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: shipsmart-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - shipsmart-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fake-s3:
+    image: adobe/s3mock:latest
+    container_name: shipsmart-s3
+    environment:
+      - initialBuckets=shipsmart-uploads,shipsmart-documents
+    ports:
+      - "${S3_PORT:-9090}:9090"
+      - "${S3_HTTP_PORT:-9191}:9191"
+    networks:
+      - shipsmart-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  shipsmart-network:
+    driver: bridge

@@ -1,0 +1,58 @@
+{
+  "environment": "production",
+  "service": {
+    "port": 3000
+  },
+  "postgres": {
+    "username": "",
+    "password": "",
+    "database": "",
+    "host": "",
+    "port": 5432,
+    "dialect": "postgres",
+    "pool": {
+      "max": 20,
+      "min": 5,
+      "acquire": 60000,
+      "idle": 10000
+    }
+  },
+  "aws": {
+    "region": "us-east-1",
+    "access_key": "",
+    "secret_access_key": "",
+    "s3": {
+      "bucket_prefix": "shipsmart",
+      "endpoint": ""
+    }
+  },
+  "bull": {
+    "worker": {
+      "queue_name": "shipsmart-worker"
+    },
+    "default_redis": {
+      "port": 6379,
+      "host": "",
+      "password": ""
+    },
+    "advanced_settings": {
+      "lock_duration": 600000,
+      "lock_renew_time": 300000,
+      "stalled_interval": 600000
+    }
+  },
+  "bull-arena": {
+    "ui_port": 3050,
+    "default_redis": {
+      "port": 6379,
+      "host": "",
+      "password": ""
+    },
+    "queues": [
+      {
+        "hostId": "production",
+        "name": "shipsmart-worker"
+      }
+    ]
+  }
+}
