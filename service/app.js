@@ -6,6 +6,9 @@ const bodyParser = require('body-parser');
 
 global.logger = require('@shipsmart/logger').application('service');
 
+const initializeLogger = require('./helpers/logger-initializer');
+initializeLogger();
+
 const db = require('./models');
 
 const app = express();
@@ -20,11 +23,13 @@ db.sequelize.sync()
 
 const apiRouter = require('./routes');
 const requestLogger = require('./middleware/request-logger');
+const contextManager = require('./middleware/context-manager');
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(addRequestId);
+app.use(contextManager);
 app.use(bodyParser.urlencoded({ extended: true, limit: '20mb' }));
 app.use(bodyParser.json({ limit: '20mb' }));
 app.use(requestLogger);

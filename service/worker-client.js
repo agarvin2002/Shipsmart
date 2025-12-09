@@ -79,8 +79,14 @@ class WorkerClient {
       logger.info(`[${requestId}] [Bull: ${queueName}] [Job:${job.name}:${job.id}] has been removed.`);
     });
 
-    queue.on('waiting', (jobId) => {
-      logger.info(`[Bull: ${queueName}] [Job:${jobId}] is waiting.`);
+    queue.on('waiting', async (jobId) => {
+      try {
+        const job = await queue.getJob(jobId);
+        const requestId = job && job.data && job.data.requestId ? job.data.requestId : 'unknown';
+        logger.info(`[${requestId}] [Bull: ${queueName}] [Job:${jobId}] is waiting.`);
+      } catch (error) {
+        logger.info(`[Bull: ${queueName}] [Job:${jobId}] is waiting.`);
+      }
     });
   }
 

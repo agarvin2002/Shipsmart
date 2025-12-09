@@ -1,0 +1,19 @@
+{
+  "name": "@shipsmart/redis",
+  "version": "1.0.0",
+  "main": "./index.js",
+  "description": "Redis client and utilities for ShipSmart services",
+  "dependencies": {
+    "@shipsmart/env": "1.0.0",
+    "@shipsmart/errors": "1.0.0",
+    "redis": "^2.8.0",
+    "sprintf-js": "^1.1.3"
+  },
+  "keywords": [
+    "redis",
+    "cache",
+    "wrapper"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED"
+}

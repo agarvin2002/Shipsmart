@@ -1,0 +1,22 @@
+{
+  "name": "@shipsmart/s3",
+  "version": "1.0.0",
+  "description": "S3 wrapper and utilities for ShipSmart services",
+  "main": "./index.js",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.946.0",
+    "@aws-sdk/s3-request-presigner": "^3.946.0",
+    "@shipsmart/env": "1.0.0",
+    "@shipsmart/errors": "1.0.0",
+    "aws-sdk": "^2.817.0",
+    "cls-hooked": "^4.2.2",
+    "uuid": "^13.0.0"
+  },
+  "keywords": [
+    "s3",
+    "aws",
+    "wrapper"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED"
+}
