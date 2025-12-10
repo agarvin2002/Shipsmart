@@ -13,11 +13,8 @@ const RedisKeys = {
   CHECK_DATA: 'CHECK_DATA:%(checkId)s',
   CHECK_LIST: 'CHECK_LIST',
 
-  // Add more key patterns as needed
-  // Example patterns:
-  // USER_DATA: 'USER:%(userId)s',
-  // SESSION: 'SESSION:%(sessionId)s',
-  // RATE_LIMIT: 'RATE_LIMIT:%(ip)s',
+  // User-related keys
+  USER_DATA: 'USER_DATA:%(userId)s',
 };
 
 module.exports = RedisKeys;
