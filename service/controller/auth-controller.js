@@ -1,23 +1,23 @@
 /* global logger */
 const AuthService = require('../services/auth-service');
-const UserValidator = require('../validators/user-validator');
+const AuthValidator = require('../validators/auth-validator');
 const ResponseFormatter = require('../helpers/response-formatter');
 const AuthPresenter = require('../presenters/auth-presenter');
 
 class AuthController {
   static async register(req, res, next) {
     try {
-      const userValidator = new UserValidator('register');
-      userValidator.validate(req.body);
+      const authValidator = new AuthValidator('register');
+      authValidator.validate(req.body);
 
-      if (!userValidator.isValid) {
-        const validationErrors = ResponseFormatter.formatValidationError(userValidator.error, req.id);
+      if (!authValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(authValidator.error, req.id);
         logger.warn(`Validation failed for register: ${JSON.stringify(validationErrors.error.details)}`);
         return res.status(400).send(validationErrors);
       }
 
       const authService = new AuthService();
-      const result = await authService.register(userValidator.value);
+      const result = await authService.register(authValidator.value);
 
       if (result.error) {
         logger.warn(`Registration failed: ${result.error}`);
@@ -35,19 +35,19 @@ class AuthController {
 
   static async login(req, res, next) {
     try {
-      const userValidator = new UserValidator('login');
-      userValidator.validate(req.body);
+      const authValidator = new AuthValidator('login');
+      authValidator.validate(req.body);
 
-      if (!userValidator.isValid) {
-        const validationErrors = ResponseFormatter.formatValidationError(userValidator.error, req.id);
+      if (!authValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(authValidator.error, req.id);
         logger.warn(`Validation failed for login: ${JSON.stringify(validationErrors.error.details)}`);
         return res.status(400).send(validationErrors);
       }
 
       const authService = new AuthService();
       const result = await authService.login(
-        userValidator.value.email,
-        userValidator.value.password,
+        authValidator.value.email,
+        authValidator.value.password,
         req.ip,
         req.headers['user-agent']
       );
@@ -68,17 +68,17 @@ class AuthController {
 
   static async refreshToken(req, res, next) {
     try {
-      const userValidator = new UserValidator('refreshToken');
-      userValidator.validate(req.body);
+      const authValidator = new AuthValidator('refreshToken');
+      authValidator.validate(req.body);
 
-      if (!userValidator.isValid) {
-        const validationErrors = ResponseFormatter.formatValidationError(userValidator.error, req.id);
+      if (!authValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(authValidator.error, req.id);
         logger.warn(`Validation failed for refreshToken: ${JSON.stringify(validationErrors.error.details)}`);
         return res.status(400).send(validationErrors);
       }
 
       const authService = new AuthService();
-      const result = await authService.refreshToken(userValidator.value.refresh_token);
+      const result = await authService.refreshToken(authValidator.value.refresh_token);
 
       if (result.error) {
         logger.warn(`Token refresh failed: ${result.error}`);
@@ -115,17 +115,17 @@ class AuthController {
 
   static async forgotPassword(req, res, next) {
     try {
-      const userValidator = new UserValidator('forgotPassword');
-      userValidator.validate(req.body);
+      const authValidator = new AuthValidator('forgotPassword');
+      authValidator.validate(req.body);
 
-      if (!userValidator.isValid) {
-        const validationErrors = ResponseFormatter.formatValidationError(userValidator.error, req.id);
+      if (!authValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(authValidator.error, req.id);
         logger.warn(`Validation failed for forgotPassword: ${JSON.stringify(validationErrors.error.details)}`);
         return res.status(400).send(validationErrors);
       }
 
       const authService = new AuthService();
-      await authService.forgotPassword(userValidator.value.email);
+      await authService.forgotPassword(authValidator.value.email);
 
       logger.info(`Forgot password request processed`);
       const response = AuthPresenter.presentPasswordResetRequest();
@@ -138,19 +138,19 @@ class AuthController {
 
   static async resetPassword(req, res, next) {
     try {
-      const userValidator = new UserValidator('resetPassword');
-      userValidator.validate(req.body);
+      const authValidator = new AuthValidator('resetPassword');
+      authValidator.validate(req.body);
 
-      if (!userValidator.isValid) {
-        const validationErrors = ResponseFormatter.formatValidationError(userValidator.error, req.id);
+      if (!authValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(authValidator.error, req.id);
         logger.warn(`Validation failed for resetPassword: ${JSON.stringify(validationErrors.error.details)}`);
         return res.status(400).send(validationErrors);
       }
 
       const authService = new AuthService();
       const result = await authService.resetPassword(
-        userValidator.value.token,
-        userValidator.value.new_password
+        authValidator.value.token,
+        authValidator.value.new_password
       );
 
       if (result.error) {
