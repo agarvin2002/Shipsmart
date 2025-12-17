@@ -70,10 +70,7 @@ module.exports = (sequelize, DataTypes) => {
     selected_rate_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      references: {
-        model: 'rates',
-        key: 'id',
-      },
+      comment: 'ID of the selected rate (no FK constraint to avoid cyclic dependency)',
     },
     tracking_number: {
       type: DataTypes.STRING(255),
@@ -109,6 +106,7 @@ module.exports = (sequelize, DataTypes) => {
     Shipment.belongsTo(models.UserAddress, { foreignKey: 'origin_address_id', as: 'originAddress' });
     Shipment.belongsTo(models.UserAddress, { foreignKey: 'destination_address_id', as: 'destinationAddress' });
     Shipment.hasMany(models.Rate, { foreignKey: 'shipment_id', as: 'rates' });
+    Shipment.belongsTo(models.Rate, { foreignKey: 'selected_rate_id', as: 'selectedRate', constraints: false });
   };
 
   return Shipment;
