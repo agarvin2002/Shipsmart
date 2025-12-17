@@ -6,7 +6,6 @@
     "service"
   ],
   "scripts": {
-    "bootstrap": "lerna bootstrap --use-workspaces",
     "lint": "eslint",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
@@ -19,8 +18,7 @@
   "devDependencies": {
     "eslint": "^7.16.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.22.1",
-    "lerna": "^3.20.2"
+    "eslint-plugin-import": "^2.22.1"
   },
   "dependencies": {
     "aws-sdk": "^2.817.0",
