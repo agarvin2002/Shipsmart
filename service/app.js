@@ -36,13 +36,19 @@ app.use(requestLogger);
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
   next();
 });
 
 app.use('/api/', apiRouter);
 
-const ErrorFormatter = require('./helpers/error-formatter');
+const ResponseFormatter = require('./helpers/response-formatter');
 
 app.use((err, req, res, next) => {
   res.locals.message = err.message;
@@ -52,10 +58,10 @@ app.use((err, req, res, next) => {
     logger.error(`[${req.id}] Exception occurred while processing the request. ${err.stack}`);
     const statusCode = err.statusCode || 500;
     const message = err.message || 'Unexpected Error occurred.';
-    return res.status(statusCode).json(ErrorFormatter.formatError(message, req.id, statusCode));
+    return res.status(statusCode).json(ResponseFormatter.formatError(message, req.id, statusCode));
   }
 
-  return res.status(404).json(ErrorFormatter.formatError('Not Found', req.id, 404));
+  return res.status(404).json(ResponseFormatter.formatError('Not Found', req.id, 404));
 });
 
 module.exports = app;

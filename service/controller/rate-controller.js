@@ -2,7 +2,7 @@ const CarrierRateOrchestrator = require('../services/carriers/carrier-rate-orche
 const RateValidator = require('../validators/rate-validator');
 const RatePresenter = require('../presenters/rate-presenter');
 const RateHistoryRepository = require('../repositories/rate-history-repository');
-const ErrorFormatter = require('../helpers/error-formatter');
+const ResponseFormatter = require('../helpers/response-formatter');
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class RateController {
@@ -20,7 +20,7 @@ class RateController {
       // Validate request
       const validation = RateValidator.validateGetRates(requestData);
       if (!validation.valid) {
-        return res.status(400).json(ErrorFormatter.formatValidationError(
+        return res.status(400).json(ResponseFormatter.formatValidationError(
           { details: validation.errors },
           req.id
         ));
@@ -39,7 +39,7 @@ class RateController {
         cached: response.summary.cached,
       });
 
-      res.status(200).json(ErrorFormatter.formatSuccess(response, req.id));
+      res.status(200).json(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error('[RateController] Failed to get rates', {
         userId: req.user?.userId,
@@ -64,7 +64,7 @@ class RateController {
       // Validate request
       const validation = RateValidator.validateGetRates(requestData);
       if (!validation.valid) {
-        return res.status(400).json(ErrorFormatter.formatValidationError(
+        return res.status(400).json(ResponseFormatter.formatValidationError(
           { details: validation.errors },
           req.id
         ));
@@ -81,7 +81,7 @@ class RateController {
       // Present response
       const response = RatePresenter.presentComparison(rateComparison);
 
-      res.status(200).json(ErrorFormatter.formatSuccess(response, req.id));
+      res.status(200).json(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error('[RateController] Failed to compare rates', {
         userId: req.user?.userId,
@@ -108,7 +108,7 @@ class RateController {
       });
 
       if (!origin_zip || !destination_zip) {
-        return res.status(400).json(ErrorFormatter.formatError(
+        return res.status(400).json(ResponseFormatter.formatError(
           'origin_zip and destination_zip are required',
           req.id,
           400
@@ -123,7 +123,7 @@ class RateController {
 
       const response = RatePresenter.presentHistory(history);
 
-      res.status(200).json(ErrorFormatter.formatSuccess(response, req.id));
+      res.status(200).json(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error('[RateController] Failed to get rate history', {
         userId: req.user?.userId,
