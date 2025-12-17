@@ -74,6 +74,8 @@ module.exports = (sequelize, DataTypes) => {
 
   UserAddress.associate = (models) => {
     UserAddress.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+    UserAddress.hasMany(models.Shipment, { foreignKey: 'origin_address_id', as: 'shipmentsAsOrigin' });
+    UserAddress.hasMany(models.Shipment, { foreignKey: 'destination_address_id', as: 'shipmentsAsDestination' });
   };
 
   return UserAddress;

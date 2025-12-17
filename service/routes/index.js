@@ -5,6 +5,7 @@ const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const addressRoutes = require('./address');
 const carrierCredentialRoutes = require('./carrier-credential');
+const rateRoutes = require('./rate');
 
 router.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
@@ -15,5 +16,6 @@ router.use('/', authRoutes);
 router.use('/', userRoutes);
 router.use('/', addressRoutes);
 router.use('/', carrierCredentialRoutes);
+router.use('/', rateRoutes);
 
 module.exports = router;

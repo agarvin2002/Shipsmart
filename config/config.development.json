@@ -3,6 +3,12 @@
   "service": {
     "port": 3001
   },
+  "jwt": {
+    "secret": "your-super-secret-jwt-key-change-in-production-min-32-chars"
+  },
+  "encryption": {
+    "key": "12345678901234567890123456789012"
+  },
   "postgres": {
     "username": "postgres",
     "password": "postgres",
@@ -54,5 +60,33 @@
         "name": "shipsmart-worker"
       }
     ]
+  },
+  "carriers": {
+    "fedex": {
+      "api_url": "https://apis-sandbox.fedex.com",
+      "timeout": 15000,
+      "rate_cache_ttl": 300
+    },
+    "ups": {
+      "api_url": "https://wwwcie.ups.com",
+      "timeout": 15000,
+      "rate_cache_ttl": 300
+    },
+    "usps": {
+      "api_url": "https://apis-tem.usps.com",
+      "timeout": 15000,
+      "rate_cache_ttl": 300
+    },
+    "dhl": {
+      "api_url": "https://api-sandbox.dhl.com",
+      "timeout": 15000,
+      "rate_cache_ttl": 300
+    }
+  },
+  "rate_shopping": {
+    "max_carriers": 4,
+    "parallel_requests": true,
+    "cache_enabled": true,
+    "default_cache_ttl": 300
   }
 }

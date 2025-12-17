@@ -1,6 +1,7 @@
 /* global logger */
 const CarrierCredentialRepository = require('../repositories/carrier-credential-repository');
 const CryptoHelper = require('../helpers/crypto-helper');
+const CarrierRouter = require('../lib/carrier-router');
 
 class CarrierCredentialService {
   constructor() {
@@ -146,7 +147,29 @@ class CarrierCredentialService {
 
       logger.info(`Validating ${credential.carrier} credentials for user ${userId}`);
 
-      const isValid = true;
+      // Use real carrier API validation
+      let isValid = false;
+      let errorMessage = null;
+
+      try {
+        const carrierService = CarrierRouter.getCarrierService(credential.carrier, credential);
+        const validationResult = await carrierService.validateCredentials();
+        isValid = validationResult.valid;
+        errorMessage = validationResult.error || null;
+
+        logger.info(`${credential.carrier} credential validation result`, {
+          userId,
+          carrier: credential.carrier,
+          isValid,
+        });
+      } catch (error) {
+        isValid = false;
+        errorMessage = error.message;
+        logger.error(`${credential.carrier} credential validation failed`, {
+          userId,
+          error: error.message,
+        });
+      }
 
       await this.credentialRepository.updateValidationStatus(
         id,
@@ -158,6 +181,7 @@ class CarrierCredentialService {
         valid: isValid,
         carrier: credential.carrier,
         validated_at: new Date().toISOString(),
+        ...(errorMessage && { error: errorMessage }),
       };
     } catch (error) {
       logger.error(`Error validating credential ${id}: ${error.stack}`);
