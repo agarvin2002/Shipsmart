@@ -15,6 +15,13 @@ const RedisKeys = {
 
   // User-related keys
   USER_DATA: 'USER_DATA:%(userId)s',
+
+  // Rate shopping keys
+  RATE_CACHE: 'RATE:%(originId)s:%(destId)s:%(weight)s:%(service)s',
+  RATE_LOCK: 'RATE_LOCK:%(cacheKey)s',
+  CARRIER_TOKEN: 'CARRIER_TOKEN:%(carrier)s:%(clientId)s',
+  RATE_HISTORY: 'RATE_HISTORY:%(userId)s',
+  CARRIER_STATUS: 'CARRIER_STATUS:%(carrier)s',
 };
 
 module.exports = RedisKeys;
