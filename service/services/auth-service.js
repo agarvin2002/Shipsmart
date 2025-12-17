@@ -55,7 +55,6 @@ class AuthService {
       }
 
       const accessTokenData = JwtHelper.generateAccessToken(user);
-      const refreshTokenData = JwtHelper.generateRefreshToken(user);
 
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
@@ -63,7 +62,6 @@ class AuthService {
       await this.sessionRepository.create({
         user_id: user.id,
         token_jti: accessTokenData.jti,
-        refresh_token: refreshTokenData.token,
         device_info: deviceInfo,
         ip_address: ipAddress,
         expires_at: expiresAt,
@@ -76,48 +74,10 @@ class AuthService {
 
       return {
         access_token: accessTokenData.token,
-        refresh_token: refreshTokenData.token,
         user: userResponse,
       };
     } catch (error) {
       logger.error(`Error in login: ${error.stack}`);
-      throw error;
-    }
-  }
-
-  async refreshToken(refreshToken) {
-    try {
-      const decoded = JwtHelper.verifyToken(refreshToken);
-      if (!decoded || decoded.type !== 'refresh') {
-        return { error: 'Invalid refresh token' };
-      }
-
-      const session = await this.sessionRepository.findByJti(decoded.jti);
-      if (!session || session.revoked_at) {
-        return { error: 'Session has been revoked' };
-      }
-
-      const user = await this.userRepository.findById(decoded.userId);
-      if (!user) {
-        return { error: 'User not found' };
-      }
-
-      const newAccessTokenData = JwtHelper.generateAccessToken(user);
-
-      await this.sessionRepository.create({
-        user_id: user.id,
-        token_jti: newAccessTokenData.jti,
-        refresh_token: refreshToken,
-        device_info: session.device_info,
-        ip_address: session.ip_address,
-        expires_at: session.expires_at,
-      });
-
-      return {
-        access_token: newAccessTokenData.token,
-      };
-    } catch (error) {
-      logger.error(`Error in refreshToken: ${error.stack}`);
       throw error;
     }
   }

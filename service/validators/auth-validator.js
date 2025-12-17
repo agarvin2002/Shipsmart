@@ -4,7 +4,6 @@ const {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
-  refreshTokenSchema,
 } = require('./validation-schema/auth-schema');
 
 class AuthValidator {

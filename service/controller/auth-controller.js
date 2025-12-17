@@ -66,34 +66,6 @@ class AuthController {
     }
   }
 
-  static async refreshToken(req, res, next) {
-    try {
-      const authValidator = new AuthValidator('refreshToken');
-      authValidator.validate(req.body);
-
-      if (!authValidator.isValid) {
-        const validationErrors = ResponseFormatter.formatValidationError(authValidator.error, req.id);
-        logger.warn(`Validation failed for refreshToken: ${JSON.stringify(validationErrors.error.details)}`);
-        return res.status(400).send(validationErrors);
-      }
-
-      const authService = new AuthService();
-      const result = await authService.refreshToken(authValidator.value.refresh_token);
-
-      if (result.error) {
-        logger.warn(`Token refresh failed: ${result.error}`);
-        return res.status(401).send(ResponseFormatter.formatError(result.error, req.id, 401));
-      }
-
-      logger.info(`Token refreshed successfully`);
-      const response = AuthPresenter.presentRefreshResponse(result);
-      res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
-    } catch (error) {
-      logger.error(`Exception in refreshToken: ${error.message}`, { stack: error.stack });
-      next(error);
-    }
-  }
-
   static async logout(req, res, next) {
     try {
       if (!req.user || !req.user.jti) {
