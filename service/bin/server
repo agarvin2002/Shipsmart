@@ -4,6 +4,9 @@ const http = require('http');
 const config = require('@shipsmart/env');
 const app = require('../app');
 
+// Increase max listeners to prevent warning during hot reloads
+process.setMaxListeners(15);
+
 const port = normalizePort(config.get('service:port') || '3000');
 app.set('port', port);
 
@@ -53,3 +56,32 @@ function onListening() {
   const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
   logger.info('Server listening on ' + bind);
 }
+
+// Graceful shutdown handler
+function gracefulShutdown(signal) {
+  logger.info(`${signal} received. Closing HTTP server gracefully...`);
+
+  server.close(() => {
+    logger.info('HTTP server closed');
+
+    // Close database connections
+    const { sequelize } = require('../models');
+    sequelize.close().then(() => {
+      logger.info('Database connections closed');
+      process.exit(0);
+    }).catch((err) => {
+      logger.error('Error closing database connections:', err);
+      process.exit(1);
+    });
+  });
+
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    logger.error('Forcing shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
