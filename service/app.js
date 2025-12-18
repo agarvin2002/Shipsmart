@@ -4,6 +4,9 @@ const cookieParser = require('cookie-parser');
 const addRequestId = require('express-request-id')();
 const bodyParser = require('body-parser');
 
+// Increase max listeners to prevent warning during hot reloads and multiple event handlers
+process.setMaxListeners(20);
+
 global.logger = require('@shipsmart/logger').application('service');
 
 const initializeLogger = require('./helpers/logger-initializer');
@@ -62,6 +65,60 @@ app.use((err, req, res, next) => {
   }
 
   return res.status(404).json(ResponseFormatter.formatError('Not Found', req.id, 404));
+});
+
+// Start server
+const servicePort = config.get('service:port') || 3001;
+const server = app.listen(servicePort, () => {
+  logger.info(`Server listening on port ${servicePort}`);
+});
+
+// Set keep-alive timeout
+server.keepAliveTimeout = 65000;
+
+// Graceful shutdown handler
+function gracefulShutdown(signal) {
+  logger.info(`${signal} received. Closing HTTP server gracefully...`);
+
+  // Stop accepting new connections
+  server.close(() => {
+    logger.info('HTTP server closed');
+
+    // Close database connections
+    db.sequelize.close()
+      .then(() => {
+        logger.info('Database connections closed');
+        process.exit(0);
+      })
+      .catch((err) => {
+        logger.error(`Error closing database: ${err.message}`);
+        process.exit(1);
+      });
+  });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  const forceExitTimeout = setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 5000);
+
+  // Don't keep the process alive just for this timeout
+  forceExitTimeout.unref();
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught Exception: ${err.message}`, { stack: err.stack });
+  gracefulShutdown('uncaughtException');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
 });
 
 module.exports = app;
