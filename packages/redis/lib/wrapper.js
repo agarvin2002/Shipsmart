@@ -1,35 +1,11 @@
 /* global logger */
 const { promisify } = require('util');
 const { sprintf } = require('sprintf-js');
-const cls = require('cls-hooked');
 const { RedisClient } = require('./config');
 const { RedisError } = require('@shipsmart/errors');
 
 const MULTI_GET = 'get';
 const MULTI_DELETE = 'del';
-
-/**
- * Get namespace for request ID tracking
- * Returns null if namespace doesn't exist yet (during initialization)
- */
-function getNamespace() {
-  try {
-    return cls.getNamespace('shipsmart_sequel_trans');
-  } catch (error) {
-    return null;
-  }
-}
-
-/**
- * Format log message with request ID if available
- * @param {String} message - Log message
- * @returns {String} Formatted message with [requestId] prefix
- */
-function formatLog(message) {
-  const namespace = getNamespace();
-  const requestId = namespace && namespace.get('requestId');
-  return requestId ? `[${requestId}] ${message}` : message;
-}
 
 /**
  * RedisWrapper - Utility class for Redis operations
@@ -45,13 +21,13 @@ class RedisWrapper {
    */
   static async get(key) {
     try {
-      logger.debug(formatLog(`[redis] Getting key: ${key}`));
+      logger.debug(`[redis] Getting key: ${key}`);
       const promisedGet = promisify(RedisClient.get).bind(RedisClient);
       const value = await promisedGet(key);
-      logger.debug(formatLog(`[redis] Key retrieved: ${key}, exists: ${value !== null}`));
+      logger.debug(`[redis] Key retrieved: ${key}, exists: ${value !== null}`);
       return value;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error getting key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error getting key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to get key: ${key}`);
     }
   }
@@ -64,13 +40,13 @@ class RedisWrapper {
    */
   static async set(key, value) {
     try {
-      logger.debug(formatLog(`[redis] Setting key: ${key}, value length: ${value?.length || 0}`));
+      logger.debug(`[redis] Setting key: ${key}, value length: ${value?.length || 0}`);
       const promisedSet = promisify(RedisClient.set).bind(RedisClient);
       const result = await promisedSet(key, value);
-      logger.info(formatLog(`[redis] Key set successfully: ${key}`));
+      logger.info(`[redis] Key set successfully: ${key}`);
       return result;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error setting key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error setting key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to set key: ${key}`);
     }
   }
@@ -84,13 +60,13 @@ class RedisWrapper {
    */
   static async setWithExpiry(key, value, expiry = 86400) {
     try {
-      logger.debug(formatLog(`[redis] Setting key with expiry: ${key}, TTL: ${expiry}s, value length: ${value?.length || 0}`));
+      logger.debug(`[redis] Setting key with expiry: ${key}, TTL: ${expiry}s, value length: ${value?.length || 0}`);
       const promisedSet = promisify(RedisClient.set).bind(RedisClient);
       const result = await promisedSet(key, value, 'EX', expiry);
-      logger.info(formatLog(`[redis] Key set with expiry successfully: ${key}, TTL: ${expiry}s`));
+      logger.info(`[redis] Key set with expiry successfully: ${key}, TTL: ${expiry}s`);
       return result;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error setting key ${key} with expiry ${expiry}s: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error setting key ${key} with expiry ${expiry}s: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to set key with expiry: ${key}`);
     }
   }
@@ -102,13 +78,13 @@ class RedisWrapper {
    */
   static async del(key) {
     try {
-      logger.debug(formatLog(`[redis] Deleting key: ${key}`));
+      logger.debug(`[redis] Deleting key: ${key}`);
       const promisedDel = promisify(RedisClient.del).bind(RedisClient);
       const deletedCount = await promisedDel(key);
-      logger.info(formatLog(`[redis] Key deleted: ${key}, count: ${deletedCount}`));
+      logger.info(`[redis] Key deleted: ${key}, count: ${deletedCount}`);
       return deletedCount;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error deleting key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error deleting key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to delete key: ${key}`);
     }
   }
@@ -120,13 +96,13 @@ class RedisWrapper {
    */
   static async incr(key) {
     try {
-      logger.debug(formatLog(`[redis] Incrementing key: ${key}`));
+      logger.debug(`[redis] Incrementing key: ${key}`);
       const promisedIncr = promisify(RedisClient.incr).bind(RedisClient);
       const newValue = await promisedIncr(key);
-      logger.debug(formatLog(`[redis] Key incremented: ${key}, new value: ${newValue}`));
+      logger.debug(`[redis] Key incremented: ${key}, new value: ${newValue}`);
       return newValue;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error incrementing key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error incrementing key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to increment key: ${key}`);
     }
   }
@@ -138,13 +114,13 @@ class RedisWrapper {
    */
   static async decr(key) {
     try {
-      logger.debug(formatLog(`[redis] Decrementing key: ${key}`));
+      logger.debug(`[redis] Decrementing key: ${key}`);
       const promisedDecr = promisify(RedisClient.decr).bind(RedisClient);
       const newValue = await promisedDecr(key);
-      logger.debug(formatLog(`[redis] Key decremented: ${key}, new value: ${newValue}`));
+      logger.debug(`[redis] Key decremented: ${key}, new value: ${newValue}`);
       return newValue;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error decrementing key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error decrementing key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to decrement key: ${key}`);
     }
   }
@@ -156,14 +132,14 @@ class RedisWrapper {
    */
   static async ttl(key) {
     try {
-      logger.debug(formatLog(`[redis] Getting TTL for key: ${key}`));
+      logger.debug(`[redis] Getting TTL for key: ${key}`);
       const promisedTtl = promisify(RedisClient.ttl).bind(RedisClient);
       const ttl = await promisedTtl(key);
       const ttlStatus = ttl === -2 ? 'key does not exist' : ttl === -1 ? 'no expiry' : `${ttl}s remaining`;
-      logger.debug(formatLog(`[redis] TTL retrieved for key: ${key}, status: ${ttlStatus}`));
+      logger.debug(`[redis] TTL retrieved for key: ${key}, status: ${ttlStatus}`);
       return ttl;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error getting TTL for key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error getting TTL for key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to get TTL for key: ${key}`);
     }
   }
@@ -175,14 +151,14 @@ class RedisWrapper {
    */
   static async exists(key) {
     try {
-      logger.debug(formatLog(`[redis] Checking existence of key: ${key}`));
+      logger.debug(`[redis] Checking existence of key: ${key}`);
       const promisedExists = promisify(RedisClient.exists).bind(RedisClient);
       const result = await promisedExists(key);
       const exists = result === 1;
-      logger.debug(formatLog(`[redis] Key existence check: ${key}, exists: ${exists}`));
+      logger.debug(`[redis] Key existence check: ${key}, exists: ${exists}`);
       return exists;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error checking existence of key ${key}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error checking existence of key ${key}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to check existence of key: ${key}`);
     }
   }
@@ -213,20 +189,20 @@ class RedisWrapper {
   static multiGet(keys) {
     return new Promise((resolve, reject) => {
       try {
-        logger.debug(formatLog(`[redis] Executing multiGet for ${keys.length} keys`));
+        logger.debug(`[redis] Executing multiGet for ${keys.length} keys`);
         const multi = RedisWrapper.getMultiObj(keys, MULTI_GET);
         multi.exec((err, response) => {
           if (err) {
-            logger.error(formatLog(`[redis] Error in multiGet for ${keys.length} keys: ${err.message}`), { stack: err.stack });
+            logger.error(`[redis] Error in multiGet for ${keys.length} keys: ${err.message}`, { stack: err.stack });
             reject(new RedisError('Failed to execute multiGet'));
           } else {
             const successCount = response.filter(v => v !== null).length;
-            logger.info(formatLog(`[redis] MultiGet completed: ${successCount}/${keys.length} keys found`));
+            logger.info(`[redis] MultiGet completed: ${successCount}/${keys.length} keys found`);
             resolve(response);
           }
         });
       } catch (error) {
-        logger.error(formatLog(`[redis] Error in multiGet: ${error.message}`), { stack: error.stack });
+        logger.error(`[redis] Error in multiGet: ${error.message}`, { stack: error.stack });
         reject(new RedisError('Failed to execute multiGet'));
       }
     });
@@ -240,20 +216,20 @@ class RedisWrapper {
   static multiDelete(keys) {
     return new Promise((resolve, reject) => {
       try {
-        logger.debug(formatLog(`[redis] Executing multiDelete for ${keys.length} keys`));
+        logger.debug(`[redis] Executing multiDelete for ${keys.length} keys`);
         const multi = RedisWrapper.getMultiObj(keys, MULTI_DELETE);
         multi.exec((err, response) => {
           if (err) {
-            logger.error(formatLog(`[redis] Error in multiDelete for ${keys.length} keys: ${err.message}`), { stack: err.stack });
+            logger.error(`[redis] Error in multiDelete for ${keys.length} keys: ${err.message}`, { stack: err.stack });
             reject(new RedisError('Failed to execute multiDelete'));
           } else {
             const deletedCount = response.reduce((sum, count) => sum + count, 0);
-            logger.info(formatLog(`[redis] MultiDelete completed: ${deletedCount} keys deleted out of ${keys.length} requested`));
+            logger.info(`[redis] MultiDelete completed: ${deletedCount} keys deleted out of ${keys.length} requested`);
             resolve(response);
           }
         });
       } catch (error) {
-        logger.error(formatLog(`[redis] Error in multiDelete: ${error.message}`), { stack: error.stack });
+        logger.error(`[redis] Error in multiDelete: ${error.message}`, { stack: error.stack });
         reject(new RedisError('Failed to execute multiDelete'));
       }
     });
@@ -268,23 +244,23 @@ class RedisWrapper {
     return new Promise((resolve, reject) => {
       try {
         const keys = Object.keys(keyValue);
-        logger.debug(formatLog(`[redis] Executing multiSet for ${keys.length} keys`));
+        logger.debug(`[redis] Executing multiSet for ${keys.length} keys`);
         const multi = RedisClient.multi();
         keys.forEach((key) => {
           multi.set(key, keyValue[key]);
         });
         multi.exec((err, response) => {
           if (err) {
-            logger.error(formatLog(`[redis] Error in multiSet for ${keys.length} keys: ${err.message}`), { stack: err.stack });
+            logger.error(`[redis] Error in multiSet for ${keys.length} keys: ${err.message}`, { stack: err.stack });
             reject(new RedisError('Failed to execute multiSet'));
           } else {
             const successCount = response.filter(r => r === 'OK').length;
-            logger.info(formatLog(`[redis] MultiSet completed: ${successCount}/${keys.length} keys set successfully`));
+            logger.info(`[redis] MultiSet completed: ${successCount}/${keys.length} keys set successfully`);
             resolve(response);
           }
         });
       } catch (error) {
-        logger.error(formatLog(`[redis] Error in multiSet: ${error.message}`), { stack: error.stack });
+        logger.error(`[redis] Error in multiSet: ${error.message}`, { stack: error.stack });
         reject(new RedisError('Failed to execute multiSet'));
       }
     });
@@ -302,10 +278,10 @@ class RedisWrapper {
   static getRedisKey(key, data) {
     try {
       const formattedKey = sprintf(key, data);
-      logger.debug(formatLog(`[redis] Key formatted: template="${key}", result="${formattedKey}"`));
+      logger.debug(`[redis] Key formatted: template="${key}", result="${formattedKey}"`);
       return formattedKey;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error formatting key template="${key}": ${error.message}`), { stack: error.stack, data });
+      logger.error(`[redis] Error formatting key template="${key}": ${error.message}`, { stack: error.stack, data });
       throw new RedisError('Invalid Redis key data');
     }
   }
@@ -325,23 +301,23 @@ class RedisWrapper {
    */
   static async invalidateByPattern(pattern) {
     try {
-      logger.info(formatLog(`[redis] Invalidating keys by pattern: ${pattern}`));
+      logger.info(`[redis] Invalidating keys by pattern: ${pattern}`);
       const promisedKeys = promisify(RedisClient.keys).bind(RedisClient);
       const keys = await promisedKeys(pattern);
 
       if (keys.length === 0) {
-        logger.info(formatLog(`[redis] No keys found matching pattern: ${pattern}`));
+        logger.info(`[redis] No keys found matching pattern: ${pattern}`);
         return 0;
       }
 
-      logger.debug(formatLog(`[redis] Found ${keys.length} keys matching pattern: ${pattern}`));
+      logger.debug(`[redis] Found ${keys.length} keys matching pattern: ${pattern}`);
       const results = await RedisWrapper.multiDelete(keys);
       const deletedCount = results.reduce((sum, count) => sum + count, 0);
 
-      logger.info(formatLog(`[redis] Invalidation complete: ${deletedCount} keys deleted for pattern: ${pattern}`));
+      logger.info(`[redis] Invalidation complete: ${deletedCount} keys deleted for pattern: ${pattern}`);
       return deletedCount;
     } catch (error) {
-      logger.error(formatLog(`[redis] Error invalidating by pattern ${pattern}: ${error.message}`), { stack: error.stack });
+      logger.error(`[redis] Error invalidating by pattern ${pattern}: ${error.message}`, { stack: error.stack });
       throw new RedisError(`Failed to invalidate pattern: ${pattern}`);
     }
   }
