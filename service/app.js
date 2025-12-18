@@ -88,7 +88,10 @@ function gracefulShutdown(signal) {
     db.sequelize.close()
       .then(() => {
         logger.info('Database connections closed');
-        process.exit(0);
+        // Add delay before exit to ensure port is fully released by OS
+        setTimeout(() => {
+          process.exit(0);
+        }, 500);
       })
       .catch((err) => {
         logger.error(`Error closing database: ${err.message}`);
