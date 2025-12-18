@@ -7,11 +7,6 @@ const CarrierCredentialPresenter = require('../presenters/carrier-credential-pre
 class CarrierCredentialController {
   static async getCredentials(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Get credentials failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const credentialService = new CarrierCredentialService();
       const credentials = await credentialService.getCredentialsByUserId(req.user.userId);
 
@@ -26,11 +21,6 @@ class CarrierCredentialController {
 
   static async getCredentialById(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Get credential failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const credentialValidator = new CarrierCredentialValidator('get');
       credentialValidator.validate({ id: parseInt(req.params.id, 10) });
 
@@ -59,11 +49,6 @@ class CarrierCredentialController {
 
   static async createCredential(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Create credential failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const credentialValidator = new CarrierCredentialValidator('create');
       credentialValidator.validate(req.body);
 
@@ -95,11 +80,6 @@ class CarrierCredentialController {
 
   static async updateCredential(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Update credential failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const credentialValidator = new CarrierCredentialValidator('update');
       credentialValidator.validate({ id: parseInt(req.params.id, 10), ...req.body });
 
@@ -128,11 +108,6 @@ class CarrierCredentialController {
 
   static async deleteCredential(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Delete credential failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const credentialValidator = new CarrierCredentialValidator('get');
       credentialValidator.validate({ id: parseInt(req.params.id, 10) });
 
@@ -161,11 +136,6 @@ class CarrierCredentialController {
 
   static async validateCredential(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Validate credential failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const credentialValidator = new CarrierCredentialValidator('get');
       credentialValidator.validate({ id: parseInt(req.params.id, 10) });
 

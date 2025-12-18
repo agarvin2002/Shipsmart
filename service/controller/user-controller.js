@@ -7,11 +7,6 @@ const UserPresenter = require('../presenters/user-presenter');
 class UserController {
   static async getProfile(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Get profile failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const userService = new UserService();
       const user = await userService.getUserById(req.user.userId);
 
@@ -31,11 +26,6 @@ class UserController {
 
   static async updateProfile(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Update profile failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const userValidator = new UserValidator('update');
       userValidator.validate(req.body);
 
@@ -64,11 +54,6 @@ class UserController {
 
   static async changePassword(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Change password failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const userValidator = new UserValidator('changePassword');
       userValidator.validate(req.body);
 
@@ -101,11 +86,6 @@ class UserController {
 
   static async deleteAccount(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Delete account failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const userService = new UserService();
       const result = await userService.deleteUser(req.user.userId);
 

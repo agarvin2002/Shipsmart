@@ -7,11 +7,6 @@ const AddressPresenter = require('../presenters/address-presenter');
 class AddressController {
   static async getAddresses(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Get addresses failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const addressService = new AddressService();
       const addresses = await addressService.getAddressesByUserId(req.user.userId);
 
@@ -26,11 +21,6 @@ class AddressController {
 
   static async getAddressById(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Get address failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const addressValidator = new AddressValidator('get');
       addressValidator.validate({ id: parseInt(req.params.id, 10) });
 
@@ -59,11 +49,6 @@ class AddressController {
 
   static async createAddress(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Create address failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const addressValidator = new AddressValidator('create');
       addressValidator.validate(req.body);
 
@@ -90,11 +75,6 @@ class AddressController {
 
   static async updateAddress(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Update address failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const addressValidator = new AddressValidator('update');
       addressValidator.validate({ id: parseInt(req.params.id, 10), ...req.body });
 
@@ -123,11 +103,6 @@ class AddressController {
 
   static async deleteAddress(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Delete address failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const addressValidator = new AddressValidator('get');
       addressValidator.validate({ id: parseInt(req.params.id, 10) });
 
@@ -156,11 +131,6 @@ class AddressController {
 
   static async setDefaultAddress(req, res, next) {
     try {
-      if (!req.user || !req.user.userId) {
-        logger.warn(`Set default address failed: no user in request`);
-        return res.status(401).send(ResponseFormatter.formatError('Unauthorized', req.id, 401));
-      }
-
       const addressValidator = new AddressValidator('get');
       addressValidator.validate({ id: parseInt(req.params.id, 10) });
 
