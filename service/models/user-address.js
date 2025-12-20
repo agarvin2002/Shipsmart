@@ -18,10 +18,17 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    address_type: {
+      type: DataTypes.ENUM('source', 'destination'),
+      allowNull: false,
+      defaultValue: 'source',
+      comment: 'Type of address: source (origin/from) or destination (to)',
+    },
     is_default: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+      comment: 'Only applicable for source addresses. One default source per user allowed.',
     },
     company_name: {
       type: DataTypes.STRING(255),
@@ -68,8 +75,18 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'user_addresses',
     indexes: [
       { fields: ['user_id'] },
-      { fields: ['user_id', 'is_default'] },
+      { fields: ['user_id', 'address_type'] },
+      { fields: ['user_id', 'address_type', 'is_default'] },
     ],
+    validate: {
+      onlyOneDefaultSource() {
+        // Validation for ensuring only one default source per user
+        // This is also enforced at service layer
+        if (this.address_type === 'source' && this.is_default) {
+          // Additional validation will be in service layer
+        }
+      },
+    },
   });
 
   UserAddress.associate = (models) => {

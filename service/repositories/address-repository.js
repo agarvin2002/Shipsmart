@@ -8,6 +8,13 @@ class AddressRepository {
   async findByUserId(userId) {
     return await UserAddress.findAll({
       where: { user_id: userId },
+      order: [['address_type', 'ASC'], ['is_default', 'DESC'], ['created_at', 'DESC']],
+    });
+  }
+
+  async findByUserIdAndType(userId, addressType) {
+    return await UserAddress.findAll({
+      where: { user_id: userId, address_type: addressType },
       order: [['is_default', 'DESC'], ['created_at', 'DESC']],
     });
   }
@@ -15,6 +22,12 @@ class AddressRepository {
   async findDefaultByUserId(userId) {
     return await UserAddress.findOne({
       where: { user_id: userId, is_default: true },
+    });
+  }
+
+  async findDefaultSource(userId) {
+    return await UserAddress.findOne({
+      where: { user_id: userId, address_type: 'source', is_default: true },
     });
   }
 
@@ -48,16 +61,28 @@ class AddressRepository {
     );
   }
 
+  async unsetAllDefaultsForType(userId, addressType) {
+    return await UserAddress.update(
+      { is_default: false },
+      { where: { user_id: userId, address_type: addressType } }
+    );
+  }
+
   async setDefault(id, userId) {
     const sequelize = UserAddress.sequelize;
     return await sequelize.transaction(async (t) => {
-      await UserAddress.update(
-        { is_default: false },
-        { where: { user_id: userId }, transaction: t }
-      );
-
+      // Get the address to determine its type
       const address = await UserAddress.findByPk(id, { transaction: t });
       if (!address) return null;
+
+      // Only unset defaults for the same type (source)
+      if (address.address_type === 'source') {
+        await UserAddress.update(
+          { is_default: false },
+          { where: { user_id: userId, address_type: 'source' }, transaction: t }
+        );
+      }
+
       return await address.update({ is_default: true }, { transaction: t });
     });
   }

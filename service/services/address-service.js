@@ -16,6 +16,36 @@ class AddressService {
     }
   }
 
+  async getSourceAddresses(userId) {
+    try {
+      const addresses = await this.addressRepository.findByUserIdAndType(userId, 'source');
+      return addresses;
+    } catch (error) {
+      logger.error(`Error fetching source addresses for user ${userId}: ${error.stack}`);
+      throw error;
+    }
+  }
+
+  async getDestinationAddresses(userId) {
+    try {
+      const addresses = await this.addressRepository.findByUserIdAndType(userId, 'destination');
+      return addresses;
+    } catch (error) {
+      logger.error(`Error fetching destination addresses for user ${userId}: ${error.stack}`);
+      throw error;
+    }
+  }
+
+  async getDefaultSourceAddress(userId) {
+    try {
+      const address = await this.addressRepository.findDefaultSource(userId);
+      return address;
+    } catch (error) {
+      logger.error(`Error fetching default source address for user ${userId}: ${error.stack}`);
+      throw error;
+    }
+  }
+
   async getAddressById(id, userId) {
     try {
       const address = await this.addressRepository.findByIdAndUserId(id, userId);
@@ -31,8 +61,12 @@ class AddressService {
 
   async createAddress(data) {
     try {
-      if (data.is_default) {
-        await this.addressRepository.unsetAllDefaults(data.user_id);
+      // Only source addresses can be set as default
+      if (data.is_default && data.address_type === 'source') {
+        await this.addressRepository.unsetAllDefaultsForType(data.user_id, 'source');
+      } else if (data.is_default && data.address_type === 'destination') {
+        // Destination addresses cannot have default
+        data.is_default = false;
       }
 
       const address = await this.addressRepository.create(data);
@@ -50,8 +84,12 @@ class AddressService {
         return { error: 'Address not found' };
       }
 
-      if (data.is_default) {
-        await this.addressRepository.unsetAllDefaults(userId);
+      // Only source addresses can be set as default
+      if (data.is_default && address.address_type === 'source') {
+        await this.addressRepository.unsetAllDefaultsForType(userId, 'source');
+      } else if (data.is_default && address.address_type === 'destination') {
+        // Destination addresses cannot have default
+        data.is_default = false;
       }
 
       const updatedAddress = await this.addressRepository.update(id, data);
@@ -81,6 +119,11 @@ class AddressService {
       const address = await this.addressRepository.findByIdAndUserId(id, userId);
       if (!address) {
         return { error: 'Address not found' };
+      }
+
+      // Only source addresses can be set as default
+      if (address.address_type !== 'source') {
+        return { error: 'Only source addresses can be set as default' };
       }
 
       const result = await this.addressRepository.setDefault(id, userId);

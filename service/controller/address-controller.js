@@ -7,12 +7,40 @@ const AddressPresenter = require('../presenters/address-presenter');
 class AddressController {
   static async getAddresses(req, res, next) {
     try {
+      const { type, default: isDefault } = req.query;
       const addressService = new AddressService();
-      const addresses = await addressService.getAddressesByUserId(req.user.userId);
+      let result;
+      let logMessage;
 
-      logger.info(`Successfully fetched ${addresses.length} addresses for user: ${req.user.userId}`);
-      const response = AddressPresenter.presentCollection(addresses);
-      res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
+      // Get default source address
+      if (isDefault === 'true') {
+        const address = await addressService.getDefaultSourceAddress(req.user.userId);
+        if (!address) {
+          logger.warn(`No default source address found for user: ${req.user.userId}`);
+          return res.status(404).send(ResponseFormatter.formatError('No default source address found', req.id, 404));
+        }
+        logMessage = 'default source address';
+        result = AddressPresenter.present(address);
+      }
+      // Get addresses by type
+      else if (type === 'source') {
+        const addresses = await addressService.getSourceAddresses(req.user.userId);
+        logMessage = `${addresses.length} source addresses`;
+        result = AddressPresenter.presentCollection(addresses);
+      } else if (type === 'destination') {
+        const addresses = await addressService.getDestinationAddresses(req.user.userId);
+        logMessage = `${addresses.length} destination addresses`;
+        result = AddressPresenter.presentCollection(addresses);
+      }
+      // Get all addresses
+      else {
+        const addresses = await addressService.getAddressesByUserId(req.user.userId);
+        logMessage = `${addresses.length} addresses`;
+        result = AddressPresenter.presentCollection(addresses);
+      }
+
+      logger.info(`Successfully fetched ${logMessage} for user: ${req.user.userId}`);
+      res.status(200).send(ResponseFormatter.formatSuccess(result, req.id));
     } catch (error) {
       logger.error(`Exception in getAddresses: ${error.message}`, { stack: error.stack });
       next(error);
@@ -144,8 +172,8 @@ class AddressController {
       const address = await addressService.setDefaultAddress(req.params.id, req.user.userId);
 
       if (address.error) {
-        logger.warn(`Address not found with id: ${req.params.id}`);
-        return res.status(404).send(ResponseFormatter.formatError(address.error, req.id, 404));
+        logger.warn(`Failed to set default address: ${address.error}`);
+        return res.status(400).send(ResponseFormatter.formatError(address.error, req.id, 400));
       }
 
       logger.info(`Successfully set default address with id: ${req.params.id}`);
