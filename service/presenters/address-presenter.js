@@ -9,6 +9,7 @@ class AddressPresenter extends BasePresenter {
     return {
       id: data.id,
       label: data.address_label,
+      address_type: data.address_type || 'source',
       is_default: data.is_default || false,
       company_name: data.company_name || null,
       address: {
@@ -32,6 +33,7 @@ class AddressPresenter extends BasePresenter {
     return {
       id: data.id,
       label: data.address_label,
+      address_type: data.address_type || 'source',
       is_default: data.is_default || false,
       full_address: this.formatFullAddress(data)
     };

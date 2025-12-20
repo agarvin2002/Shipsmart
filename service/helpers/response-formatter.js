@@ -1,4 +1,4 @@
-class ErrorFormatter {
+class ResponseFormatter {
   static formatValidationError(error, requestId) {
     if (error.isJoi) {
       const errors = error.details.map((detail) => ({
@@ -48,4 +48,4 @@ class ErrorFormatter {
   }
 }
 
-module.exports = ErrorFormatter;
+module.exports = ResponseFormatter;

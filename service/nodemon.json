@@ -1,0 +1,28 @@
+{
+  "restartable": "rs",
+  "ignore": [
+    ".git",
+    "node_modules/**/node_modules",
+    "logs/*"
+  ],
+  "verbose": false,
+  "watch": [
+    "bin/",
+    "app.js",
+    "controller/",
+    "services/",
+    "middleware/",
+    "routes/",
+    "models/",
+    "helpers/",
+    "validators/",
+    "presenters/",
+    "repositories/"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "ext": "js json",
+  "delay": 2000,
+  "signal": "SIGTERM"
+}

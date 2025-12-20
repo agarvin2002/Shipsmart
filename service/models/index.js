@@ -20,12 +20,7 @@ const namespace = cls.createNamespace('shipsmart_sequel_trans');
 Sequelize.useCLS(namespace);
 
 postgresConf.logging = (msg) => {
-  const requestId = namespace.get('requestId');
-  if (requestId) {
-    logger.info(`[${requestId}] ${msg}`);
-  } else {
-    logger.info(msg);
-  }
+  logger.info(msg);
 };
 const sequelize = new Sequelize(
   postgresConf.database, postgresConf.username, postgresConf.password, postgresConf,

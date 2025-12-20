@@ -7,7 +7,13 @@
     "dev": "npx nodemon bin/server",
     "worker": "node bin/worker",
     "worker:dev": "npx nodemon bin/worker",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "npx sequelize-cli db:migrate",
+    "db:migrate:undo": "npx sequelize-cli db:migrate:undo",
+    "db:migrate:undo:all": "npx sequelize-cli db:migrate:undo:all",
+    "db:migrate:status": "npx sequelize-cli db:migrate:status",
+    "db:seed": "npx sequelize-cli db:seed:all",
+    "db:seed:undo": "npx sequelize-cli db:seed:undo:all"
   },
   "dependencies": {
     "@hapi/joi": "15.0.3",
@@ -37,6 +43,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.7"
+    "nodemon": "^2.0.7",
+    "sequelize-cli": "^6.6.3"
   }
 }

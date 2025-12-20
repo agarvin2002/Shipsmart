@@ -5,9 +5,8 @@ class AuthPresenter extends BasePresenter {
   static presentLoginResponse(data) {
     return {
       access_token: data.access_token,
-      refresh_token: data.refresh_token,
       token_type: 'Bearer',
-      expires_in: 3600,
+      expires_in: 86400,
       user: UserPresenter.present(data.user)
     };
   }
@@ -16,14 +15,6 @@ class AuthPresenter extends BasePresenter {
     return {
       user: UserPresenter.present(user),
       message: 'Registration successful. Please verify your email.'
-    };
-  }
-
-  static presentRefreshResponse(data) {
-    return {
-      access_token: data.access_token,
-      token_type: 'Bearer',
-      expires_in: 3600
     };
   }
 

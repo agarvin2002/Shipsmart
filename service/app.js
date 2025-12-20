@@ -4,6 +4,9 @@ const cookieParser = require('cookie-parser');
 const addRequestId = require('express-request-id')();
 const bodyParser = require('body-parser');
 
+// Increase max listeners to prevent warning during hot reloads and multiple event handlers
+process.setMaxListeners(20);
+
 global.logger = require('@shipsmart/logger').application('service');
 
 const initializeLogger = require('./helpers/logger-initializer');
@@ -36,13 +39,19 @@ app.use(requestLogger);
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
   next();
 });
 
 app.use('/api/', apiRouter);
 
-const ErrorFormatter = require('./helpers/error-formatter');
+const ResponseFormatter = require('./helpers/response-formatter');
 
 app.use((err, req, res, next) => {
   res.locals.message = err.message;
@@ -52,10 +61,67 @@ app.use((err, req, res, next) => {
     logger.error(`[${req.id}] Exception occurred while processing the request. ${err.stack}`);
     const statusCode = err.statusCode || 500;
     const message = err.message || 'Unexpected Error occurred.';
-    return res.status(statusCode).json(ErrorFormatter.formatError(message, req.id, statusCode));
+    return res.status(statusCode).json(ResponseFormatter.formatError(message, req.id, statusCode));
   }
 
-  return res.status(404).json(ErrorFormatter.formatError('Not Found', req.id, 404));
+  return res.status(404).json(ResponseFormatter.formatError('Not Found', req.id, 404));
+});
+
+// Start server
+const servicePort = config.get('service:port') || 3001;
+const server = app.listen(servicePort, () => {
+  logger.info(`Server listening on port ${servicePort}`);
+});
+
+// Set keep-alive timeout
+server.keepAliveTimeout = 65000;
+
+// Graceful shutdown handler
+function gracefulShutdown(signal) {
+  logger.info(`${signal} received. Closing HTTP server gracefully...`);
+
+  // Stop accepting new connections
+  server.close(() => {
+    logger.info('HTTP server closed');
+
+    // Close database connections
+    db.sequelize.close()
+      .then(() => {
+        logger.info('Database connections closed');
+        // Add delay before exit to ensure port is fully released by OS
+        setTimeout(() => {
+          process.exit(0);
+        }, 500);
+      })
+      .catch((err) => {
+        logger.error(`Error closing database: ${err.message}`);
+        process.exit(1);
+      });
+  });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  const forceExitTimeout = setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 5000);
+
+  // Don't keep the process alive just for this timeout
+  forceExitTimeout.unref();
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught Exception: ${err.message}`, { stack: err.stack });
+  gracefulShutdown('uncaughtException');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
 });
 
 module.exports = app;

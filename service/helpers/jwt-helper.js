@@ -20,21 +20,7 @@ class JwtHelper {
     };
 
     return {
-      token: jwt.sign(payload, this.getSecret(), { expiresIn: '1h' }),
-      jti,
-    };
-  }
-
-  static generateRefreshToken(user) {
-    const jti = uuidv4();
-    const payload = {
-      userId: user.id,
-      jti,
-      type: 'refresh',
-    };
-
-    return {
-      token: jwt.sign(payload, this.getSecret(), { expiresIn: '30d' }),
+      token: jwt.sign(payload, this.getSecret(), { expiresIn: '24h' }),
       jti,
     };
   }

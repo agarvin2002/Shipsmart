@@ -2,6 +2,7 @@ const Joi = require('@hapi/joi');
 
 const createAddressSchema = Joi.object({
   address_label: Joi.string().required(),
+  address_type: Joi.string().valid('source', 'destination').required(),
   is_default: Joi.boolean().default(false),
   company_name: Joi.string().optional().allow(''),
   street_address_1: Joi.string().required(),
@@ -16,6 +17,7 @@ const createAddressSchema = Joi.object({
 const updateAddressSchema = Joi.object({
   id: Joi.number().integer().required(),
   address_label: Joi.string().optional(),
+  address_type: Joi.string().valid('source', 'destination').optional(),
   is_default: Joi.boolean().optional(),
   company_name: Joi.string().optional().allow(''),
   street_address_1: Joi.string().optional(),

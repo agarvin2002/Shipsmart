@@ -1,10 +1,12 @@
 const Joi = require('@hapi/joi');
 const {
-  updateUserSchema,
-  changePasswordSchema,
-} = require('./validation-schema/user-schema');
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} = require('./validation-schema/auth-schema');
 
-class UserValidator {
+class AuthValidator {
   constructor(type) {
     this.isValid = true;
     this.type = type;
@@ -20,15 +22,24 @@ class UserValidator {
   fetchSchema() {
     let schema = null;
     switch (this.type) {
-      case 'update':
-        schema = updateUserSchema;
+      case 'register':
+        schema = registerSchema;
         break;
-      case 'changePassword':
-        schema = changePasswordSchema;
+      case 'login':
+        schema = loginSchema;
+        break;
+      case 'forgotPassword':
+        schema = forgotPasswordSchema;
+        break;
+      case 'resetPassword':
+        schema = resetPasswordSchema;
+        break;
+      case 'refreshToken':
+        schema = refreshTokenSchema;
         break;
       default:
-        this.setErrorMessage(`Invalid user operation type: ${this.type}`);
-        logger.error(`Invalid user operation type: ${this.type}`);
+        this.setErrorMessage(`Invalid authentication operation type: ${this.type}`);
+        logger.error(`Invalid authentication operation type: ${this.type}`);
     }
     return schema;
   }
@@ -50,4 +61,4 @@ class UserValidator {
   }
 }
 
-module.exports = UserValidator;
+module.exports = AuthValidator;

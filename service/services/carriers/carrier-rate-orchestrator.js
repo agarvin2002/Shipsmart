@@ -165,7 +165,7 @@ class CarrierRateOrchestrator {
    */
   async enrichShipmentData(shipmentData) {
     try {
-      const { origin_address_id, destination_address_id } = shipmentData;
+      const { origin_address_id, destination_address_id, package: pkg } = shipmentData;
 
       // Fetch full address details if only IDs provided
       if (origin_address_id && !shipmentData.origin) {
@@ -184,6 +184,23 @@ class CarrierRateOrchestrator {
         shipmentData.destination = destination.dataValues;
       }
 
+      // Normalize package dimensions - support both flat and nested formats
+      if (pkg) {
+        if (pkg.length && pkg.width && pkg.height && !pkg.dimensions) {
+          // Flat format: move dimensions into nested object
+          pkg.dimensions = {
+            length: pkg.length,
+            width: pkg.width,
+            height: pkg.height,
+          };
+        } else if (pkg.dimensions && !pkg.length) {
+          // Nested format: flatten dimensions
+          pkg.length = pkg.dimensions.length;
+          pkg.width = pkg.dimensions.width;
+          pkg.height = pkg.dimensions.height;
+        }
+      }
+
       return shipmentData;
     } catch (error) {
       logger.error('[CarrierRateOrchestrator] Failed to enrich shipment data', {
@@ -199,9 +216,13 @@ class CarrierRateOrchestrator {
    * @returns {string} Cache key
    */
   buildCacheKey(shipmentData) {
-    const { origin_address_id, destination_address_id, package: pkg, service_type } = shipmentData;
+    const { origin_address_id, destination_address_id, origin, destination, package: pkg, service_type } = shipmentData;
 
-    const key = `${this.cacheKeyPrefix}:${origin_address_id}:${destination_address_id}:${pkg.weight}:${service_type || 'ground'}`;
+    // Use address IDs if available, otherwise use postal codes
+    const originKey = origin_address_id || origin?.postal_code || 'unknown';
+    const destKey = destination_address_id || destination?.postal_code || 'unknown';
+
+    const key = `${this.cacheKeyPrefix}:${originKey}:${destKey}:${pkg.weight}:${service_type || 'ground'}`;
     return key;
   }
 

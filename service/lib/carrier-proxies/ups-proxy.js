@@ -22,7 +22,7 @@ class UpsProxy extends BaseCarrierProxy {
 
       const authString = Buffer.from(`${client_id}:${client_secret}`).toString('base64');
 
-      if (!merchant_id) {
+      if (!account_number) {
         throw new Error('UPS merchant_id is required in credentials');
       }
 
@@ -31,7 +31,7 @@ class UpsProxy extends BaseCarrierProxy {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Authorization': `Basic ${authString}`,
-          'x-merchant-id': merchant_id,
+          'x-merchant-id': account_number,
         },
         data: new URLSearchParams({
           grant_type: 'client_credentials',
