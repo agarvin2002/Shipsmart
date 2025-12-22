@@ -3,10 +3,16 @@ const config = require('@shipsmart/env');
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class UspsProxy extends BaseCarrierProxy {
-  constructor() {
-    const baseUrl = config.get('carriers:usps:api_url') || 'https://apis-tem.usps.com';
-    const timeout = config.get('carriers:usps:timeout') || 15000;
-    super('USPS', baseUrl, timeout);
+  constructor(carrierConfig = null) {
+    // If carrierConfig is provided, use it (DB-driven approach)
+    // Otherwise fall back to environment config (legacy approach)
+    if (carrierConfig) {
+      super('USPS', carrierConfig);
+    } else {
+      const baseUrl = config.get('carriers:usps:api_url') || 'https://apis-tem.usps.com';
+      const timeout = config.get('carriers:usps:timeout') || 15000;
+      super('USPS', baseUrl, timeout);
+    }
   }
 
   /**

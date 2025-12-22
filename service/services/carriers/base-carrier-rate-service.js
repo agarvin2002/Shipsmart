@@ -6,17 +6,23 @@ class BaseCarrierRateService {
     this.carrierName = carrierCredential?.carrier || 'unknown';
     this.credential = carrierCredential;
 
+    // Store carrier config and services from DB (added by CarrierRouter)
+    this.carrierConfig = carrierCredential?.carrierConfig || null;
+    this.services = carrierCredential?.services || [];
+
     // Decrypt credentials if provided
     if (carrierCredential) {
+      const accountNumbers = carrierCredential.account_numbers
+        ? (typeof carrierCredential.account_numbers === 'string'
+            ? JSON.parse(carrierCredential.account_numbers)
+            : carrierCredential.account_numbers)
+        : [];
+
       this.decryptedCredentials = {
         client_id: CryptoHelper.decrypt(carrierCredential.client_id_encrypted),
         client_secret: CryptoHelper.decrypt(carrierCredential.client_secret_encrypted),
-        account_number: carrierCredential.account_numbers
-          ? JSON.parse(carrierCredential.account_numbers)[0]
-          : null,
-        account_numbers: carrierCredential.account_numbers
-          ? JSON.parse(carrierCredential.account_numbers)
-          : [],
+        account_number: accountNumbers[0] || null,
+        account_numbers: accountNumbers,
       };
     }
   }

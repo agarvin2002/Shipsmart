@@ -1,4 +1,4 @@
-const { CarrierCredential } = require('../models');
+const { CarrierCredential, Carrier, CarrierService } = require('../models');
 const FedexRateService = require('../services/carriers/fedex-rate-service');
 const UpsRateService = require('../services/carriers/ups-rate-service');
 const UspsRateService = require('../services/carriers/usps-rate-service');
@@ -6,10 +6,10 @@ const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class CarrierRouter {
   /**
-   * Get available carriers for a user
+   * Get available carriers for a user with their config and selected services
    * @param {number} userId - User ID
    * @param {Object} shipmentData - Shipment details (optional, for filtering)
-   * @returns {Promise<Array>} Array of active, validated carrier credentials
+   * @returns {Promise<Array>} Array of carrier credentials with config and services
    */
   static async getAvailableCarriers(userId, shipmentData = null) {
     try {
@@ -29,20 +29,69 @@ class CarrierRouter {
         return [];
       }
 
-      // Filter carriers that support the route (if shipment data provided)
-      if (shipmentData) {
-        return credentials.filter(cred =>
-          this.supportsRoute(cred.carrier, shipmentData)
-        );
-      }
+      // Enrich credentials with carrier config and selected services
+      const enrichedCredentials = await Promise.all(
+        credentials.map(async (credential) => {
+          // Get carrier configuration from DB
+          const carrier = await Carrier.findOne({
+            where: { code: credential.carrier, is_active: true }
+          });
 
-      logger.info('[CarrierRouter] Found carriers', {
+          if (!carrier) {
+            logger.warn('[CarrierRouter] Carrier config not found', { carrier: credential.carrier });
+            return null;
+          }
+
+          // Get user's selected services or all services if none selected
+          let services;
+          if (credential.selected_service_ids && credential.selected_service_ids.length > 0) {
+            // User has selected specific services
+            services = await CarrierService.findAll({
+              where: {
+                id: credential.selected_service_ids,
+                carrier_id: carrier.id,
+                is_active: true
+              }
+            });
+          } else {
+            // No selection = fetch all services (backward compatible)
+            services = await CarrierService.findAll({
+              where: {
+                carrier_id: carrier.id,
+                is_active: true
+              }
+            });
+          }
+
+          // Attach carrier config and services to credential
+          const enrichedCredential = credential.toJSON();
+          enrichedCredential.carrierConfig = carrier;
+          enrichedCredential.services = services;
+
+          return enrichedCredential;
+        })
+      );
+
+      // Filter out null entries (carriers without config)
+      const validCredentials = enrichedCredentials.filter(c => c !== null);
+
+      // Filter carriers that support the route (if shipment data provided)
+      const filteredCredentials = shipmentData
+        ? validCredentials.filter(cred =>
+            this.supportsRoute(cred.carrier, shipmentData)
+          )
+        : validCredentials;
+
+      logger.info('[CarrierRouter] Found carriers with config', {
         userId,
-        count: credentials.length,
-        carriers: credentials.map(c => c.carrier),
+        count: filteredCredentials.length,
+        carriers: filteredCredentials.map(c => ({
+          carrier: c.carrier,
+          serviceCount: c.services.length
+        })),
       });
 
-      return credentials;
+      return filteredCredentials;
     } catch (error) {
       logger.error('[CarrierRouter] Error getting carriers', { error: error.message, userId });
       throw error;
