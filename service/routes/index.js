@@ -4,6 +4,7 @@ const checkRoutes = require('./check');
 const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const addressRoutes = require('./address');
+const carrierRoutes = require('./carrier');
 const carrierCredentialRoutes = require('./carrier-credential');
 const rateRoutes = require('./rate');
 
@@ -15,6 +16,7 @@ router.use('/', checkRoutes);
 router.use('/', authRoutes);
 router.use('/', userRoutes);
 router.use('/', addressRoutes);
+router.use('/', carrierRoutes);
 router.use('/', carrierCredentialRoutes);
 router.use('/', rateRoutes);
 

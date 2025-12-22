@@ -17,6 +17,7 @@ class CarrierCredentialService {
         credData.client_id = CryptoHelper.decrypt(credData.client_id_encrypted);
         credData.client_secret = CryptoHelper.decrypt(credData.client_secret_encrypted);
         credData.account_numbers = credData.account_numbers ? JSON.parse(credData.account_numbers) : [];
+        credData.selected_service_ids = credData.selected_service_ids || null;
         delete credData.client_id_encrypted;
         delete credData.client_secret_encrypted;
         return credData;
@@ -38,6 +39,7 @@ class CarrierCredentialService {
       credData.client_id = CryptoHelper.decrypt(credData.client_id_encrypted);
       credData.client_secret = CryptoHelper.decrypt(credData.client_secret_encrypted);
       credData.account_numbers = credData.account_numbers ? JSON.parse(credData.account_numbers) : [];
+      credData.selected_service_ids = credData.selected_service_ids || null;
       delete credData.client_id_encrypted;
       delete credData.client_secret_encrypted;
 
@@ -64,12 +66,14 @@ class CarrierCredentialService {
         client_id_encrypted: encryptedClientId,
         client_secret_encrypted: encryptedSecret,
         account_numbers: JSON.stringify(data.account_numbers || []),
+        selected_service_ids: data.selected_service_ids || null,
       });
 
       const credData = credential.toJSON();
       credData.client_id = data.client_id;
       credData.client_secret = data.client_secret;
       credData.account_numbers = data.account_numbers || [];
+      credData.selected_service_ids = credData.selected_service_ids || null;
       delete credData.client_id_encrypted;
       delete credData.client_secret_encrypted;
 
@@ -105,12 +109,17 @@ class CarrierCredentialService {
         updateData.is_active = data.is_active;
       }
 
+      if (data.selected_service_ids !== undefined) {
+        updateData.selected_service_ids = data.selected_service_ids;
+      }
+
       const updated = await this.credentialRepository.update(id, updateData);
 
       const credData = updated.toJSON();
       credData.client_id = CryptoHelper.decrypt(credData.client_id_encrypted);
       credData.client_secret = CryptoHelper.decrypt(credData.client_secret_encrypted);
       credData.account_numbers = credData.account_numbers ? JSON.parse(credData.account_numbers) : [];
+      credData.selected_service_ids = credData.selected_service_ids || null;
       delete credData.client_id_encrypted;
       delete credData.client_secret_encrypted;
 

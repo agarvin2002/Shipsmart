@@ -44,6 +44,11 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'pending',
       allowNull: false,
     },
+    selected_service_ids: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true,
+      defaultValue: null,
+    },
     created_at: {
       allowNull: false,
       type: DataTypes.DATE,
