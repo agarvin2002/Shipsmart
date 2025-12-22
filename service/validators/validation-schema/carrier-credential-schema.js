@@ -5,6 +5,7 @@ const createCarrierCredentialSchema = Joi.object({
   client_id: Joi.string().required(),
   client_secret: Joi.string().required(),
   account_numbers: Joi.array().items(Joi.string()).optional().default([]),
+  selected_service_ids: Joi.array().items(Joi.number().integer()).optional().allow(null),
 });
 
 const updateCarrierCredentialSchema = Joi.object({
@@ -13,6 +14,7 @@ const updateCarrierCredentialSchema = Joi.object({
   client_secret: Joi.string().optional(),
   account_numbers: Joi.array().items(Joi.string()).optional(),
   is_active: Joi.boolean().optional(),
+  selected_service_ids: Joi.array().items(Joi.number().integer()).optional().allow(null),
 });
 
 const getCarrierCredentialSchema = Joi.object({
