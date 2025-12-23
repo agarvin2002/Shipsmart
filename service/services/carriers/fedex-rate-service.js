@@ -6,7 +6,8 @@ const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 class FedexRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {
     super(carrierCredential);
-    this.proxy = new FedexProxy();
+    // Pass carrier config to proxy if available (DB-driven approach)
+    this.proxy = new FedexProxy(this.carrierConfig);
     this.carrierName = 'fedex';
   }
 
@@ -52,9 +53,26 @@ class FedexRateService extends BaseCarrierRateService {
       return [];
     }
 
+    // Get service codes from user's selected services
+    const selectedServiceCodes = this.services.map(s => s.service_code);
+
+    logger.info('[FedexRateService] Filtering rates', {
+      totalRates: rateReplyDetails.length,
+      selectedServices: selectedServiceCodes.length,
+      selectedServiceCodes
+    });
+
     const formattedRates = [];
 
     rateReplyDetails.forEach((rate) => {
+      // Filter: Only include rates for user's selected services
+      if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(rate.serviceType)) {
+        logger.debug('[FedexRateService] Skipping non-selected service', {
+          serviceType: rate.serviceType
+        });
+        return;
+      }
+
       const ratedShipmentDetails = rate.ratedShipmentDetails || [];
 
       // FedEx returns multiple rate types: ACCOUNT and LIST
@@ -78,6 +96,11 @@ class FedexRateService extends BaseCarrierRateService {
         estimated_delivery_date: rate.commit?.dateDetail?.date || null,
         raw_response: rate,
       }));
+    });
+
+    logger.info('[FedexRateService] Filtered rates', {
+      inputCount: rateReplyDetails.length,
+      outputCount: formattedRates.length
     });
 
     return formattedRates;

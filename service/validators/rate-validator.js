@@ -4,8 +4,9 @@ class RateValidator {
   static getRatesSchema() {
     const addressSchema = Joi.object({
       postal_code: Joi.string().required(),
-      city: Joi.string().required(),
-      state_province: Joi.string().required(),
+      city: Joi.string().optional(),
+      state: Joi.string().optional(),
+      state_province: Joi.string().optional(),
       country: Joi.string().length(2).uppercase().default('US'),
       company_name: Joi.string().optional(),
     });

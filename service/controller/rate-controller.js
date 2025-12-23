@@ -20,10 +20,15 @@ class RateController {
       // Validate request
       const validation = RateValidator.validateGetRates(requestData);
       if (!validation.valid) {
-        return res.status(400).json(ResponseFormatter.formatValidationError(
-          { details: validation.errors },
-          req.id
-        ));
+        return res.status(400).json({
+          success: false,
+          request_id: req.id,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: validation.errors
+          }
+        });
       }
 
       // Get rates from orchestrator
@@ -64,10 +69,15 @@ class RateController {
       // Validate request
       const validation = RateValidator.validateGetRates(requestData);
       if (!validation.valid) {
-        return res.status(400).json(ResponseFormatter.formatValidationError(
-          { details: validation.errors },
-          req.id
-        ));
+        return res.status(400).json({
+          success: false,
+          request_id: req.id,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Validation failed',
+            details: validation.errors
+          }
+        });
       }
 
       // Force refresh (don't use cache)

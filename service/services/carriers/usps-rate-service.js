@@ -6,7 +6,8 @@ const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 class UspsRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {
     super(carrierCredential);
-    this.proxy = new UspsProxy();
+    // Pass carrier config to proxy if available (DB-driven approach)
+    this.proxy = new UspsProxy(this.carrierConfig);
     this.carrierName = 'usps';
   }
 
@@ -52,17 +53,45 @@ class UspsRateService extends BaseCarrierRateService {
       return [];
     }
 
-    return rates.map((rate) => {
-      return this.formatRate({
-        service_name: rate.description || UspsRateRequestBuilder.getServiceName(rate.mailClass),
-        service_code: rate.mailClass,
-        rate_amount: parseFloat(rate.price || 0),
-        currency: 'USD',
-        delivery_days: this.estimateTransitDays(rate.mailClass),
-        estimated_delivery_date: null,
-        raw_response: rate,
-      });
+    // Get service codes from user's selected services
+    const selectedServiceCodes = this.services.map(s => s.service_code);
+
+    logger.info('[UspsRateService] Filtering rates', {
+      totalRates: rates.length,
+      selectedServices: selectedServiceCodes.length,
+      selectedServiceCodes
     });
+
+    const formattedRates = rates
+      .filter((rate) => {
+        const serviceCode = rate.mailClass;
+        // Filter: Only include rates for user's selected services
+        if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
+          logger.debug('[UspsRateService] Skipping non-selected service', {
+            serviceCode
+          });
+          return false;
+        }
+        return true;
+      })
+      .map((rate) => {
+        return this.formatRate({
+          service_name: rate.description || UspsRateRequestBuilder.getServiceName(rate.mailClass),
+          service_code: rate.mailClass,
+          rate_amount: parseFloat(rate.price || 0),
+          currency: 'USD',
+          delivery_days: this.estimateTransitDays(rate.mailClass),
+          estimated_delivery_date: null,
+          raw_response: rate,
+        });
+      });
+
+    logger.info('[UspsRateService] Filtered rates', {
+      inputCount: rates.length,
+      outputCount: formattedRates.length
+    });
+
+    return formattedRates;
   }
 
   /**

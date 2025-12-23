@@ -6,7 +6,8 @@ const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 class UpsRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {
     super(carrierCredential);
-    this.proxy = new UpsProxy();
+    // Pass carrier config to proxy if available (DB-driven approach)
+    this.proxy = new UpsProxy(this.carrierConfig);
     this.carrierName = 'ups';
   }
 
@@ -58,21 +59,49 @@ class UpsRateService extends BaseCarrierRateService {
       return [];
     }
 
-    return ratedShipments.map((rate) => {
-      // UPS may return NegotiatedRateCharges if account qualifies
-      const negotiatedRate = rate.NegotiatedRateCharges?.TotalCharge;
-      const totalCharges = negotiatedRate || rate.TotalCharges;
+    // Get service codes from user's selected services
+    const selectedServiceCodes = this.services.map(s => s.service_code);
 
-      return this.formatRate({
-        service_name: this.getServiceName(rate.Service?.Code),
-        service_code: rate.Service?.Code,
-        rate_amount: parseFloat(totalCharges?.MonetaryValue || 0),
-        currency: totalCharges?.CurrencyCode || 'USD',
-        delivery_days: rate.GuaranteedDelivery?.BusinessDaysInTransit || this.estimateTransitDays(rate.Service?.Code),
-        estimated_delivery_date: rate.GuaranteedDelivery?.DeliveryByTime || null,
-        raw_response: rate,
-      });
+    logger.info('[UpsRateService] Filtering rates', {
+      totalRates: ratedShipments.length,
+      selectedServices: selectedServiceCodes.length,
+      selectedServiceCodes
     });
+
+    const formattedRates = ratedShipments
+      .filter((rate) => {
+        const serviceCode = rate.Service?.Code;
+        // Filter: Only include rates for user's selected services
+        if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
+          logger.debug('[UpsRateService] Skipping non-selected service', {
+            serviceCode
+          });
+          return false;
+        }
+        return true;
+      })
+      .map((rate) => {
+        // UPS may return NegotiatedRateCharges if account qualifies
+        const negotiatedRate = rate.NegotiatedRateCharges?.TotalCharge;
+        const totalCharges = negotiatedRate || rate.TotalCharges;
+
+        return this.formatRate({
+          service_name: this.getServiceName(rate.Service?.Code),
+          service_code: rate.Service?.Code,
+          rate_amount: parseFloat(totalCharges?.MonetaryValue || 0),
+          currency: totalCharges?.CurrencyCode || 'USD',
+          delivery_days: rate.GuaranteedDelivery?.BusinessDaysInTransit || this.estimateTransitDays(rate.Service?.Code),
+          estimated_delivery_date: rate.GuaranteedDelivery?.DeliveryByTime || null,
+          raw_response: rate,
+        });
+      });
+
+    logger.info('[UpsRateService] Filtered rates', {
+      inputCount: ratedShipments.length,
+      outputCount: formattedRates.length
+    });
+
+    return formattedRates;
   }
 
   /**

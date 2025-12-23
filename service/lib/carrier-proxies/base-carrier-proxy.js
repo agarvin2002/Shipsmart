@@ -2,10 +2,23 @@ const axios = require('axios');
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class BaseCarrierProxy {
-  constructor(carrierName, baseUrl, timeout = 15000) {
+  constructor(carrierName, carrierConfig = null) {
     this.carrierName = carrierName;
-    this.baseUrl = baseUrl;
-    this.timeout = timeout;
+
+    // Support both legacy (baseUrl, timeout) and new (carrierConfig) constructor signatures
+    if (carrierConfig && typeof carrierConfig === 'object' && carrierConfig.base_url) {
+      // New DB-driven approach
+      this.baseUrl = carrierConfig.base_url;
+      this.timeout = carrierConfig.timeout_ms || 15000;
+      this.endpoints = carrierConfig.endpoints || {};
+      this.headers = carrierConfig.headers || {};
+    } else {
+      // Legacy approach - carrierConfig is actually baseUrl
+      this.baseUrl = carrierConfig || '';
+      this.timeout = arguments[2] || 15000; // Third argument was timeout
+      this.endpoints = {};
+      this.headers = {};
+    }
   }
 
   async makeRequest(endpoint, options = {}) {

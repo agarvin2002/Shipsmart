@@ -5,10 +5,22 @@ class CarrierCredentialRepository {
     return await CarrierCredential.findByPk(id);
   }
 
-  async findByUserId(userId) {
+  async findByUserId(userId, options = {}) {
+    const where = { user_id: userId };
+
+    if (options.carrier) {
+      where.carrier = options.carrier;
+    }
+
+    if (options.active_only !== false) {
+      where.is_active = true;
+    }
+
     return await CarrierCredential.findAll({
-      where: { user_id: userId },
+      where,
       order: [['carrier', 'ASC']],
+      limit: options.limit,
+      offset: options.offset,
     });
   }
 

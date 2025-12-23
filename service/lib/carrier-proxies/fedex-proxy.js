@@ -3,10 +3,16 @@ const config = require('@shipsmart/env');
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class FedexProxy extends BaseCarrierProxy {
-  constructor() {
-    const baseUrl = config.get('carriers:fedex:api_url') || 'https://apis-sandbox.fedex.com';
-    const timeout = config.get('carriers:fedex:timeout') || 15000;
-    super('FedEx', baseUrl, timeout);
+  constructor(carrierConfig = null) {
+    // If carrierConfig is provided, use it (DB-driven approach)
+    // Otherwise fall back to environment config (legacy approach)
+    if (carrierConfig) {
+      super('FedEx', carrierConfig);
+    } else {
+      const baseUrl = config.get('carriers:fedex:api_url') || 'https://apis-sandbox.fedex.com';
+      const timeout = config.get('carriers:fedex:timeout') || 15000;
+      super('FedEx', baseUrl, timeout);
+    }
   }
 
   /**
