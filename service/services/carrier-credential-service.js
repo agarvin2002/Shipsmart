@@ -8,9 +8,9 @@ class CarrierCredentialService {
     this.credentialRepository = new CarrierCredentialRepository();
   }
 
-  async getCredentialsByUserId(userId) {
+  async getCredentialsByUserId(userId, options = {}) {
     try {
-      const credentials = await this.credentialRepository.findByUserId(userId);
+      const credentials = await this.credentialRepository.findByUserId(userId, options);
 
       return credentials.map(cred => {
         const credData = cred.toJSON();

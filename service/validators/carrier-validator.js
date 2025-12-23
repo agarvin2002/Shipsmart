@@ -1,12 +1,11 @@
 const Joi = require('@hapi/joi');
 const {
-  getCarrierCredentialsSchema,
-  createCarrierCredentialSchema,
-  updateCarrierCredentialSchema,
-  getCarrierCredentialSchema,
-} = require('./validation-schema/carrier-credential-schema');
+  getCarriersSchema,
+  getCarrierByIdSchema,
+  getCarrierServicesSchema,
+} = require('./validation-schema/carrier-schema');
 
-class CarrierCredentialValidator {
+class CarrierValidator {
   constructor(type) {
     this.isValid = true;
     this.type = type;
@@ -22,17 +21,14 @@ class CarrierCredentialValidator {
   fetchSchema() {
     let schema = null;
     switch (this.type) {
-      case 'getCredentials':
-        schema = getCarrierCredentialsSchema;
+      case 'getCarriers':
+        schema = getCarriersSchema;
         break;
-      case 'create':
-        schema = createCarrierCredentialSchema;
+      case 'getCarrierById':
+        schema = getCarrierByIdSchema;
         break;
-      case 'update':
-        schema = updateCarrierCredentialSchema;
-        break;
-      case 'get':
-        schema = getCarrierCredentialSchema;
+      case 'getCarrierServices':
+        schema = getCarrierServicesSchema;
         break;
       default:
         this.setErrorMessage(`Invalid operation type: ${this.type}`);
@@ -58,4 +54,4 @@ class CarrierCredentialValidator {
   }
 }
 
-module.exports = CarrierCredentialValidator;
+module.exports = CarrierValidator;

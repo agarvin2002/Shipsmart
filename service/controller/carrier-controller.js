@@ -1,117 +1,115 @@
 /* global logger */
-const { Carrier, CarrierService } = require('../models');
+const CarrierService = require('../services/carrier-service');
+const CarrierValidator = require('../validators/carrier-validator');
+const CarrierPresenter = require('../presenters/carrier-presenter');
 const ResponseFormatter = require('../helpers/response-formatter');
 
 class CarrierController {
+  /**
+   * Get all carriers
+   * GET /api/carriers
+   */
   static async getCarriers(req, res, next) {
     try {
-      const carriers = await Carrier.findAll({
-        where: { is_active: true },
-        attributes: ['id', 'name', 'code', 'logo_url', 'auth_type', 'required_credentials'],
-        order: [['name', 'ASC']]
-      });
+      // Validate query parameters
+      const carrierValidator = new CarrierValidator('getCarriers');
+      carrierValidator.validate(req.query);
 
+      if (!carrierValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(carrierValidator.error, req.id);
+        logger.warn(`Validation failed for getCarriers: ${JSON.stringify(validationErrors.error.details)}`);
+        return res.status(400).send(validationErrors);
+      }
+
+      // Call service
+      const carrierService = new CarrierService();
+      const carriers = await carrierService.getCarriers(carrierValidator.value);
+
+      // Present response
       logger.info(`Successfully fetched ${carriers.length} carriers`);
-
-      const formattedCarriers = carriers.map(carrier => ({
-        id: carrier.id,
-        name: carrier.name,
-        code: carrier.code,
-        logo_url: carrier.logo_url,
-        auth_type: carrier.auth_type,
-        required_credentials: carrier.required_credentials
-      }));
-
-      res.status(200).send(ResponseFormatter.formatSuccess(formattedCarriers, req.id));
+      const response = CarrierPresenter.presentCollection(carriers);
+      res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error(`Exception in getCarriers: ${error.message}`, { stack: error.stack });
       next(error);
     }
   }
 
+  /**
+   * Get carrier by ID
+   * GET /api/carriers/:id
+   */
   static async getCarrierById(req, res, next) {
     try {
-      const carrierId = parseInt(req.params.id, 10);
+      // Validate parameters
+      const carrierValidator = new CarrierValidator('getCarrierById');
+      carrierValidator.validate({ id: parseInt(req.params.id, 10) });
 
-      if (isNaN(carrierId)) {
-        logger.warn(`Invalid carrier ID: ${req.params.id}`);
-        return res.status(400).send(ResponseFormatter.formatError('Invalid carrier ID', req.id, 400));
+      if (!carrierValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(carrierValidator.error, req.id);
+        logger.warn(`Validation failed for getCarrierById: ${JSON.stringify(validationErrors.error.details)}`);
+        return res.status(400).send(validationErrors);
       }
 
-      const carrier = await Carrier.findOne({
-        where: { id: carrierId, is_active: true },
-        attributes: ['id', 'name', 'code', 'logo_url', 'auth_type', 'required_credentials']
-      });
+      // Call service
+      const carrierService = new CarrierService();
+      const result = await carrierService.getCarrierById(carrierValidator.value.id);
 
-      if (!carrier) {
-        logger.warn(`Carrier not found with id: ${carrierId}`);
-        return res.status(404).send(ResponseFormatter.formatError('Carrier not found', req.id, 404));
+      // Check for errors
+      if (result.error) {
+        logger.warn(`Carrier not found with id: ${carrierValidator.value.id}`);
+        return res.status(404).send(ResponseFormatter.formatError(result.error, req.id, 404));
       }
 
-      logger.info(`Successfully fetched carrier with id: ${carrierId}`);
-
-      const formattedCarrier = {
-        id: carrier.id,
-        name: carrier.name,
-        code: carrier.code,
-        logo_url: carrier.logo_url,
-        auth_type: carrier.auth_type,
-        required_credentials: carrier.required_credentials
-      };
-
-      res.status(200).send(ResponseFormatter.formatSuccess(formattedCarrier, req.id));
+      // Present response
+      logger.info(`Successfully fetched carrier with id: ${carrierValidator.value.id}`);
+      const response = CarrierPresenter.presentCarrier(result);
+      res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error(`Exception in getCarrierById: ${error.message}`, { stack: error.stack });
       next(error);
     }
   }
 
+  /**
+   * Get carrier services
+   * GET /api/carriers/:id/services
+   */
   static async getCarrierServices(req, res, next) {
     try {
-      const carrierId = parseInt(req.params.id, 10);
-
-      if (isNaN(carrierId)) {
-        logger.warn(`Invalid carrier ID: ${req.params.id}`);
-        return res.status(400).send(ResponseFormatter.formatError('Invalid carrier ID', req.id, 400));
-      }
-
-      const carrier = await Carrier.findOne({
-        where: { id: carrierId, is_active: true }
+      // Validate parameters
+      const carrierValidator = new CarrierValidator('getCarrierServices');
+      carrierValidator.validate({
+        id: parseInt(req.params.id, 10),
+        ...req.query
       });
 
-      if (!carrier) {
-        logger.warn(`Carrier not found with id: ${carrierId}`);
-        return res.status(404).send(ResponseFormatter.formatError('Carrier not found', req.id, 404));
+      if (!carrierValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(carrierValidator.error, req.id);
+        logger.warn(`Validation failed for getCarrierServices: ${JSON.stringify(validationErrors.error.details)}`);
+        return res.status(400).send(validationErrors);
       }
 
-      const services = await CarrierService.findAll({
-        where: {
-          carrier_id: carrierId,
-          is_active: true
-        },
-        attributes: ['id', 'service_code', 'service_name', 'description', 'category'],
-        order: [['category', 'ASC'], ['service_name', 'ASC']]
-      });
+      // Call service
+      const carrierService = new CarrierService();
+      const result = await carrierService.getCarrierServices(
+        carrierValidator.value.id,
+        {
+          category: carrierValidator.value.category,
+          active_only: carrierValidator.value.active_only
+        }
+      );
 
-      logger.info(`Successfully fetched ${services.length} services for carrier: ${carrier.name}`);
+      // Check for errors
+      if (result.error) {
+        logger.warn(`Carrier not found with id: ${carrierValidator.value.id}`);
+        return res.status(404).send(ResponseFormatter.formatError(result.error, req.id, 404));
+      }
 
-      const formattedServices = services.map(service => ({
-        id: service.id,
-        service_code: service.service_code,
-        service_name: service.service_name,
-        description: service.description,
-        category: service.category
-      }));
-
-      res.status(200).send(ResponseFormatter.formatSuccess({
-        carrier: {
-          id: carrier.id,
-          name: carrier.name,
-          code: carrier.code
-        },
-        services: formattedServices,
-        total: formattedServices.length
-      }, req.id));
+      // Present response
+      logger.info(`Successfully fetched ${result.total} services for carrier: ${result.carrier.name}`);
+      const response = CarrierPresenter.presentCarrierWithServices(result);
+      res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error(`Exception in getCarrierServices: ${error.message}`, { stack: error.stack });
       next(error);

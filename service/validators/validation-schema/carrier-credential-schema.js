@@ -1,5 +1,12 @@
 const Joi = require('@hapi/joi');
 
+const getCarrierCredentialsSchema = Joi.object({
+  carrier: Joi.string().valid('fedex', 'ups', 'dhl', 'usps').optional(),
+  active_only: Joi.boolean().optional().default(true),
+  limit: Joi.number().integer().min(1).max(100).optional(),
+  offset: Joi.number().integer().min(0).optional(),
+});
+
 const createCarrierCredentialSchema = Joi.object({
   carrier: Joi.string().valid('fedex', 'ups', 'dhl', 'usps').required(),
   client_id: Joi.string().required(),
@@ -22,6 +29,7 @@ const getCarrierCredentialSchema = Joi.object({
 });
 
 module.exports = {
+  getCarrierCredentialsSchema,
   createCarrierCredentialSchema,
   updateCarrierCredentialSchema,
   getCarrierCredentialSchema,

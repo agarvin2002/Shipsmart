@@ -7,9 +7,21 @@ const CarrierCredentialPresenter = require('../presenters/carrier-credential-pre
 class CarrierCredentialController {
   static async getCredentials(req, res, next) {
     try {
-      const credentialService = new CarrierCredentialService();
-      const credentials = await credentialService.getCredentialsByUserId(req.user.userId);
+      // Validate query parameters
+      const credentialValidator = new CarrierCredentialValidator('getCredentials');
+      credentialValidator.validate(req.query);
 
+      if (!credentialValidator.isValid) {
+        const validationErrors = ResponseFormatter.formatValidationError(credentialValidator.error, req.id);
+        logger.warn(`Validation failed for getCredentials: ${JSON.stringify(validationErrors.error.details)}`);
+        return res.status(400).send(validationErrors);
+      }
+
+      // Call service
+      const credentialService = new CarrierCredentialService();
+      const credentials = await credentialService.getCredentialsByUserId(req.user.userId, credentialValidator.value);
+
+      // Present response
       logger.info(`Successfully fetched ${credentials.length} credentials for user: ${req.user.userId}`);
       const response = CarrierCredentialPresenter.presentCollection(credentials);
       res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
