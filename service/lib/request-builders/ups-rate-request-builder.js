@@ -24,18 +24,8 @@ class UpsRateRequestBuilder {
             Name: destination.company_name || 'Recipient',
             Address: this.buildAddress(destination),
           },
-          ShipFrom: {
-            Address: this.buildAddress(origin),
-          },
           Service: {
             Code: this.mapServiceType(service_type || 'ground'),
-            Description: this.getServiceDescription(service_type || 'ground'),
-          },
-          ShipmentTotalWeight: {
-            UnitOfMeasurement: {
-              Code: pkg.weight_unit === 'kg' ? 'KGS' : 'LBS',
-            },
-            Weight: pkg.weight.toString(),
           },
           Package: [this.buildPackage(pkg)],
         },
@@ -124,22 +114,6 @@ class UpsRateRequestBuilder {
     };
 
     return mapping[serviceType] || '03';
-  }
-
-  /**
-   * Get service description for UPS service type
-   * @param {string} serviceType - Generic service type
-   * @returns {string} Service description
-   */
-  static getServiceDescription(serviceType) {
-    const mapping = {
-      ground: 'Ground',
-      express: '2nd Day Air',
-      overnight: 'Next Day Air',
-      international: 'Worldwide Expedited',
-    };
-
-    return mapping[serviceType] || 'Ground';
   }
 }
 
