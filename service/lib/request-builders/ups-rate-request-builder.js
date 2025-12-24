@@ -10,13 +10,6 @@ class UpsRateRequestBuilder {
 
     return {
       RateRequest: {
-        Request: {
-          SubVersion: '1807',
-          RequestOption: 'Rate',
-          TransactionReference: {
-            CustomerContext: 'ShipSmart AI Rate Request',
-          },
-        },
         Shipment: {
           ShipmentRatingOptions: {
             UserLevelDiscountIndicator: 'true',
@@ -32,12 +25,17 @@ class UpsRateRequestBuilder {
             Address: this.buildAddress(destination),
           },
           ShipFrom: {
-            Name: origin.company_name || 'Shipper',
             Address: this.buildAddress(origin),
           },
           Service: {
             Code: this.mapServiceType(service_type || 'ground'),
             Description: this.getServiceDescription(service_type || 'ground'),
+          },
+          ShipmentTotalWeight: {
+            UnitOfMeasurement: {
+              Code: pkg.weight_unit === 'kg' ? 'KGS' : 'LBS',
+            },
+            Weight: pkg.weight.toString(),
           },
           Package: [this.buildPackage(pkg)],
         },
@@ -51,15 +49,15 @@ class UpsRateRequestBuilder {
    * @returns {Object} UPS address format
    */
   static buildAddress(address) {
+    // UPS expects AddressLine as a single string, not an array
+    const addressLine = address.street_address_1 || address.AddressLine || '';
+
     return {
-      AddressLine: [
-        address.street_address_1,
-        ...(address.street_address_2 ? [address.street_address_2] : []),
-      ].filter(Boolean),
-      City: address.city,
-      StateProvinceCode: address.state_province || address.state,
-      PostalCode: address.postal_code,
-      CountryCode: address.country || 'US',
+      AddressLine: addressLine,
+      City: address.city || address.City,
+      StateProvinceCode: address.state_province || address.state || address.StateProvinceCode || "IL",
+      PostalCode: address.postal_code || address.PostalCode,
+      CountryCode: address.country || address.CountryCode || 'US',
     };
   }
 
@@ -69,36 +67,47 @@ class UpsRateRequestBuilder {
    * @returns {Object} UPS package format
    */
   static buildPackage(pkg) {
-    return {
+    const weightUnit = pkg.weight_unit === 'kg' ? 'KGS' : 'LBS';
+    const dimensionUnit = pkg.dimension_unit === 'cm' ? 'CM' : 'IN';
+
+    // Handle different dimension formats
+    const dimensions = pkg.dimensions || {
+      length: pkg.length,
+      width: pkg.width,
+      height: pkg.height,
+    };
+
+    const packageData = {
       PackagingType: {
-        Code: '02', // Package
-        Description: 'Package',
+        Code: '02', // 02 = Package/Customer Supplied
       },
       Dimensions: {
         UnitOfMeasurement: {
-          Code: 'IN',
-          Description: 'Inches',
+          Code: dimensionUnit,
         },
-        Length: pkg.dimensions.length.toString(),
-        Width: pkg.dimensions.width.toString(),
-        Height: pkg.dimensions.height.toString(),
+        Length: (dimensions.length || 1).toString(),
+        Width: (dimensions.width || 1).toString(),
+        Height: (dimensions.height || 1).toString(),
       },
       PackageWeight: {
         UnitOfMeasurement: {
-          Code: 'LBS',
-          Description: 'Pounds',
+          Code: weightUnit,
         },
         Weight: pkg.weight.toString(),
       },
-      ...(pkg.value && {
-        PackageServiceOptions: {
-          DeclaredValue: {
-            CurrencyCode: 'USD',
-            MonetaryValue: pkg.value.toString(),
-          },
-        },
-      }),
     };
+
+    // Add declared value if provided
+    if (pkg.value) {
+      packageData.PackageServiceOptions = {
+        DeclaredValue: {
+          CurrencyCode: 'USD',
+          MonetaryValue: pkg.value.toString(),
+        },
+      };
+    }
+
+    return packageData;
   }
 
   /**
@@ -124,13 +133,13 @@ class UpsRateRequestBuilder {
    */
   static getServiceDescription(serviceType) {
     const mapping = {
-      ground: 'UPS Ground',
-      express: 'UPS 2nd Day Air',
-      overnight: 'UPS Next Day Air',
-      international: 'UPS Worldwide Expedited',
+      ground: 'Ground',
+      express: '2nd Day Air',
+      overnight: 'Next Day Air',
+      international: 'Worldwide Expedited',
     };
 
-    return mapping[serviceType] || 'UPS Ground';
+    return mapping[serviceType] || 'Ground';
   }
 }
 
