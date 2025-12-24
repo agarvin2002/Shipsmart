@@ -8,13 +8,7 @@ class RateService {
     this.orchestrator = new CarrierRateOrchestrator();
   }
 
-  /**
-   * Get shipping rates from all carriers
-   * @param {number} userId - User ID
-   * @param {Object} rateRequest - Rate request data
-   * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Rate comparison results
-   */
+  
   async getRates(userId, rateRequest, options = {}) {
     try {
       const rateComparison = await this.orchestrator.getRatesForShipment(
@@ -35,12 +29,7 @@ class RateService {
     }
   }
 
-  /**
-   * Get rate comparison with fresh data (no cache)
-   * @param {number} userId - User ID
-   * @param {Object} rateRequest - Rate request data
-   * @returns {Promise<Object>} Rate comparison results
-   */
+  
   async compareRates(userId, rateRequest) {
     try {
       const rateComparison = await this.orchestrator.getRatesForShipment(
@@ -60,11 +49,7 @@ class RateService {
     }
   }
 
-  /**
-   * Get rate history for a specific route
-   * @param {Object} queryParams - Query parameters (origin_zip, destination_zip, carrier, days)
-   * @returns {Promise<Array>} Rate history records
-   */
+  
   async getRateHistory(queryParams) {
     try {
       const { origin_zip, destination_zip, carrier, days } = queryParams;
@@ -92,12 +77,7 @@ class RateService {
     }
   }
 
-  /**
-   * Get user's rate history
-   * @param {number} userId - User ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Rate history records
-   */
+  
   async getUserRateHistory(userId, options = {}) {
     try {
       const history = await this.rateHistoryRepository.findByUserId(userId, options);

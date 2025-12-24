@@ -11,11 +11,7 @@ class UpsRateService extends BaseCarrierRateService {
     this.carrierName = 'ups';
   }
 
-  /**
-   * Get shipping rates from UPS
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Array of rate objects
-   */
+  
   async getRates(shipmentData) {
     try {
       this.logRateFetch(shipmentData);
@@ -40,11 +36,7 @@ class UpsRateService extends BaseCarrierRateService {
     }
   }
 
-  /**
-   * Transform UPS API response to standard format
-   * @param {Object} response - UPS API response
-   * @returns {Array} Array of standardized rate objects
-   */
+  
   transformRates(response) {
     // UPS can return RatedShipment as a single object or an array
     let ratedShipments = response.RateResponse?.RatedShipment || [];
@@ -104,11 +96,7 @@ class UpsRateService extends BaseCarrierRateService {
     return formattedRates;
   }
 
-  /**
-   * Get UPS service name from code
-   * @param {string} code - UPS service code
-   * @returns {string} Service name
-   */
+  
   getServiceName(code) {
     const serviceNames = {
       '01': 'UPS Next Day Air',
@@ -127,11 +115,7 @@ class UpsRateService extends BaseCarrierRateService {
     return serviceNames[code] || `UPS Service ${code}`;
   }
 
-  /**
-   * Estimate transit days based on service code (fallback)
-   * @param {string} code - UPS service code
-   * @returns {number} Estimated transit days
-   */
+  
   estimateTransitDays(code) {
     const transitDaysMap = {
       '01': 1, // Next Day Air
@@ -148,10 +132,7 @@ class UpsRateService extends BaseCarrierRateService {
     return transitDaysMap[code] || null;
   }
 
-  /**
-   * Validate UPS credentials
-   * @returns {Promise<Object>} Validation result
-   */
+  
   async validateCredentials() {
     try {
       logger.info('[UpsRateService] Validating credentials');

@@ -11,11 +11,7 @@ class UspsRateService extends BaseCarrierRateService {
     this.carrierName = 'usps';
   }
 
-  /**
-   * Get shipping rates from USPS
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Array of rate objects
-   */
+  
   async getRates(shipmentData) {
     try {
       this.logRateFetch(shipmentData);
@@ -40,11 +36,7 @@ class UspsRateService extends BaseCarrierRateService {
     }
   }
 
-  /**
-   * Transform USPS API response to standard format
-   * @param {Object} response - USPS REST API response
-   * @returns {Array} Array of standardized rate objects
-   */
+  
   transformRates(response) {
     const rates = response.rates || [];
 
@@ -94,11 +86,7 @@ class UspsRateService extends BaseCarrierRateService {
     return formattedRates;
   }
 
-  /**
-   * Estimate transit days based on mail class
-   * @param {string} mailClass - USPS mail class
-   * @returns {number|null} Estimated transit days
-   */
+  
   estimateTransitDays(mailClass) {
     const transitDaysMap = {
       'PRIORITY_MAIL_EXPRESS': 1,
@@ -111,10 +99,7 @@ class UspsRateService extends BaseCarrierRateService {
     return transitDaysMap[mailClass] || null;
   }
 
-  /**
-   * Validate USPS credentials
-   * @returns {Promise<Object>} Validation result
-   */
+  
   async validateCredentials() {
     try {
       logger.info('[UspsRateService] Validating credentials');

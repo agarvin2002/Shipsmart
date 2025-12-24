@@ -1,10 +1,5 @@
 class UspsRateRequestBuilder {
-  /**
-   * Build USPS rate request payload for REST API v3
-   * @param {Object} shipmentData - Shipment details
-   * @param {Object} credentials - USPS credentials
-   * @returns {Object} USPS API request payload
-   */
+  
   static buildRateRequest(shipmentData, credentials) {
     const { origin, destination, package: pkg, service_type } = shipmentData;
 
@@ -28,11 +23,7 @@ class UspsRateRequestBuilder {
     };
   }
 
-  /**
-   * Get processing category based on package dimensions
-   * @param {Object} pkg - Package data
-   * @returns {string} Processing category
-   */
+  
   static getProcessingCategory(pkg) {
     const { length, width, height } = pkg.dimensions;
     const girth = 2 * (width + height);
@@ -51,11 +42,7 @@ class UspsRateRequestBuilder {
     return 'NONSTANDARD';
   }
 
-  /**
-   * Map service type to USPS mail class
-   * @param {string} serviceType - Generic service type
-   * @returns {string} USPS mail class
-   */
+  
   static mapServiceType(serviceType) {
     const mapping = {
       ground: 'PRIORITY_MAIL',
@@ -67,11 +54,7 @@ class UspsRateRequestBuilder {
     return mapping[serviceType] || 'PRIORITY_MAIL';
   }
 
-  /**
-   * Get service name from mail class
-   * @param {string} mailClass - USPS mail class
-   * @returns {string} Service name
-   */
+  
   static getServiceName(mailClass) {
     const serviceNames = {
       'PRIORITY_MAIL': 'USPS Priority Mail',

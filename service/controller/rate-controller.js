@@ -5,10 +5,7 @@ const RatePresenter = require('../presenters/rate-presenter');
 const ResponseFormatter = require('../helpers/response-formatter');
 
 class RateController {
-  /**
-   * Get shipping rates from all carriers
-   * POST /api/shipments/rates
-   */
+  
   static async getRates(req, res, next) {
     try {
       // Validate request
@@ -35,10 +32,7 @@ class RateController {
     }
   }
 
-  /**
-   * Get rate comparison with detailed analysis
-   * POST /api/shipments/rates/compare
-   */
+  
   static async compareRates(req, res, next) {
     try {
       // Validate request
@@ -65,10 +59,7 @@ class RateController {
     }
   }
 
-  /**
-   * Get rate history for a specific route
-   * GET /api/shipments/rates/history
-   */
+  
   static async getRateHistory(req, res, next) {
     try {
       // Validate query parameters

@@ -1,9 +1,5 @@
 class CarrierPresenter {
-  /**
-   * Present a single carrier
-   * @param {Object} carrier - Carrier object
-   * @returns {Object} Formatted carrier
-   */
+  
   static presentCarrier(carrier) {
     return {
       id: carrier.id,
@@ -15,11 +11,7 @@ class CarrierPresenter {
     };
   }
 
-  /**
-   * Present a collection of carriers
-   * @param {Array} carriers - Array of carrier objects
-   * @returns {Object} Formatted response
-   */
+  
   static presentCollection(carriers) {
     return {
       carriers: carriers.map(c => this.presentCarrier(c)),
@@ -27,11 +19,7 @@ class CarrierPresenter {
     };
   }
 
-  /**
-   * Present a single carrier service
-   * @param {Object} service - Service object
-   * @returns {Object} Formatted service
-   */
+  
   static presentService(service) {
     return {
       id: service.id,
@@ -42,11 +30,7 @@ class CarrierPresenter {
     };
   }
 
-  /**
-   * Present carrier with its services
-   * @param {Object} data - Object containing carrier and services
-   * @returns {Object} Formatted response
-   */
+  
   static presentCarrierWithServices(data) {
     return {
       carrier: {

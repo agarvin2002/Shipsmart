@@ -9,13 +9,7 @@ class CarrierRateOrchestrator {
     this.defaultCacheTTL = 300; // 5 minutes
   }
 
-  /**
-   * Get rates for a shipment from all available carriers
-   * @param {number} userId - User ID
-   * @param {Object} shipmentData - Shipment details
-   * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Rate comparison result
-   */
+  
   async getRatesForShipment(userId, shipmentData, options = {}) {
     try {
       logger.info('[CarrierRateOrchestrator] Getting rates for shipment', { userId });
@@ -72,12 +66,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Fetch rates from multiple carriers in parallel
-   * @param {Array} carriers - Array of carrier credentials
-   * @param {Object} shipmentData - Enriched shipment data
-   * @returns {Promise<Array>} Array of rates
-   */
+  
   async fetchRatesFromCarriers(carriers, shipmentData) {
     logger.info('[CarrierRateOrchestrator] Fetching rates from carriers', {
       carrierCount: carriers.length,
@@ -120,11 +109,7 @@ class CarrierRateOrchestrator {
     return rates;
   }
 
-  /**
-   * Analyze rates and provide comparison
-   * @param {Array} rates - Array of rate objects
-   * @returns {Object} Rate comparison analysis
-   */
+  
   analyzeRates(rates) {
     if (rates.length === 0) {
       return {
@@ -158,11 +143,7 @@ class CarrierRateOrchestrator {
     };
   }
 
-  /**
-   * Enrich shipment data with full address details
-   * @param {Object} shipmentData - Shipment data with address IDs
-   * @returns {Promise<Object>} Enriched shipment data
-   */
+  
   async enrichShipmentData(shipmentData) {
     try {
       const { origin_address_id, destination_address_id, package: pkg } = shipmentData;
@@ -210,11 +191,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Build cache key for rate request
-   * @param {Object} shipmentData - Shipment data
-   * @returns {string} Cache key
-   */
+  
   buildCacheKey(shipmentData) {
     const { origin_address_id, destination_address_id, origin, destination, package: pkg, service_type } = shipmentData;
 
@@ -226,11 +203,7 @@ class CarrierRateOrchestrator {
     return key;
   }
 
-  /**
-   * Get cached rates
-   * @param {string} cacheKey - Cache key
-   * @returns {Promise<Object|null>} Cached rates or null
-   */
+  
   async getCachedRates(cacheKey) {
     try {
       const cached = await RedisWrapper.get(cacheKey);
@@ -247,12 +220,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Cache rates
-   * @param {string} cacheKey - Cache key
-   * @param {Object} rateComparison - Rate comparison data
-   * @returns {Promise<void>}
-   */
+  
   async cacheRates(cacheKey, rateComparison) {
     try {
       await RedisWrapper.setWithExpiry(
@@ -269,13 +237,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Save rates to history for anomaly detection
-   * @param {number} userId - User ID
-   * @param {Array} rates - Array of rates
-   * @param {Object} shipmentData - Shipment data
-   * @returns {Promise<void>}
-   */
+  
   async saveRateHistory(userId, rates, shipmentData) {
     try {
       const { origin, destination, package: pkg, service_type } = shipmentData;
@@ -309,11 +271,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Invalidate cache for a specific route
-   * @param {Object} shipmentData - Shipment data
-   * @returns {Promise<void>}
-   */
+  
   async invalidateCache(shipmentData) {
     try {
       const cacheKey = this.buildCacheKey(shipmentData);

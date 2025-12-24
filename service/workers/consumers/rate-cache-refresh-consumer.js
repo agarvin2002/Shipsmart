@@ -3,10 +3,7 @@ const CarrierRateOrchestrator = require('../../services/carriers/carrier-rate-or
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class RateCacheRefreshConsumer {
-  /**
-   * Refresh rate cache in background
-   * @param {Object} job - Bull job object
-   */
+  
   static async perform(job) {
     const { userId, shipmentData, cacheKey, requestId } = job.data;
 

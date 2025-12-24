@@ -11,11 +11,7 @@ class FedexRateService extends BaseCarrierRateService {
     this.carrierName = 'fedex';
   }
 
-  /**
-   * Get shipping rates from FedEx
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Array of rate objects
-   */
+  
   async getRates(shipmentData) {
     try {
       this.logRateFetch(shipmentData);
@@ -40,11 +36,7 @@ class FedexRateService extends BaseCarrierRateService {
     }
   }
 
-  /**
-   * Transform FedEx API response to standard format
-   * @param {Object} response - FedEx API response
-   * @returns {Array} Array of standardized rate objects
-   */
+  
   transformRates(response) {
     const rateReplyDetails = response.output?.rateReplyDetails || [];
 
@@ -106,11 +98,7 @@ class FedexRateService extends BaseCarrierRateService {
     return formattedRates;
   }
 
-  /**
-   * Estimate transit days based on service type (fallback)
-   * @param {string} serviceType - FedEx service type
-   * @returns {number} Estimated transit days
-   */
+  
   estimateTransitDays(serviceType) {
     const transitDaysMap = {
       STANDARD_OVERNIGHT: 1,
@@ -126,10 +114,7 @@ class FedexRateService extends BaseCarrierRateService {
     return transitDaysMap[serviceType] || null;
   }
 
-  /**
-   * Validate FedEx credentials
-   * @returns {Promise<Object>} Validation result
-   */
+  
   async validateCredentials() {
     try {
       logger.info('[FedexRateService] Validating credentials');

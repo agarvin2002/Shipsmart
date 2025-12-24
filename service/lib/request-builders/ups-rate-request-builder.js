@@ -1,10 +1,5 @@
 class UpsRateRequestBuilder {
-  /**
-   * Build UPS rate request payload
-   * @param {Object} shipmentData - Shipment details
-   * @param {Object} credentials - UPS credentials
-   * @returns {Object} UPS API request payload
-   */
+  
   static buildRateRequest(shipmentData, credentials) {
     const { origin, destination, package: pkg, service_type } = shipmentData;
 
@@ -33,11 +28,7 @@ class UpsRateRequestBuilder {
     };
   }
 
-  /**
-   * Build address object
-   * @param {Object} address - Address data
-   * @returns {Object} UPS address format
-   */
+  
   static buildAddress(address) {
     // UPS expects AddressLine as a single string, not an array
     const addressLine = address.street_address_1 || address.AddressLine || '';
@@ -51,11 +42,7 @@ class UpsRateRequestBuilder {
     };
   }
 
-  /**
-   * Build package object
-   * @param {Object} pkg - Package data
-   * @returns {Object} UPS package format
-   */
+  
   static buildPackage(pkg) {
     const weightUnit = pkg.weight_unit === 'kg' ? 'KGS' : 'LBS';
     const dimensionUnit = pkg.dimension_unit === 'cm' ? 'CM' : 'IN';
@@ -100,11 +87,7 @@ class UpsRateRequestBuilder {
     return packageData;
   }
 
-  /**
-   * Map service type to UPS service codes
-   * @param {string} serviceType - Generic service type
-   * @returns {string} UPS service code
-   */
+  
   static mapServiceType(serviceType) {
     const mapping = {
       ground: '03', // UPS Ground

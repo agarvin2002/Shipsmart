@@ -1,8 +1,5 @@
 /* global logger */
 
-/**
- * Middleware to log incoming requests and their completion
- */
 function requestLogger(req, res, next) {
   const startTime = Date.now();
 

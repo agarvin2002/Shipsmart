@@ -1,11 +1,7 @@
 const { Carrier, CarrierService } = require('../models');
 
 class CarrierRepository {
-  /**
-   * Find all carriers
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Array of carriers
-   */
+  
   async findAll(options = {}) {
     const where = {};
 
@@ -22,12 +18,7 @@ class CarrierRepository {
     });
   }
 
-  /**
-   * Find carrier by ID
-   * @param {number} id - Carrier ID
-   * @param {boolean} activeOnly - Only return active carriers
-   * @returns {Promise<Object|null>} Carrier or null
-   */
+  
   async findById(id, activeOnly = true) {
     const where = { id };
 
@@ -41,12 +32,7 @@ class CarrierRepository {
     });
   }
 
-  /**
-   * Find carrier by code
-   * @param {string} code - Carrier code (e.g., 'ups', 'fedex')
-   * @param {boolean} activeOnly - Only return active carriers
-   * @returns {Promise<Object|null>} Carrier or null
-   */
+  
   async findByCode(code, activeOnly = true) {
     const where = { code };
 
@@ -60,12 +46,7 @@ class CarrierRepository {
     });
   }
 
-  /**
-   * Find carrier services by carrier ID
-   * @param {number} carrierId - Carrier ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Array of carrier services
-   */
+  
   async findServicesByCarrierId(carrierId, options = {}) {
     const where = { carrier_id: carrierId };
 
@@ -84,10 +65,7 @@ class CarrierRepository {
     });
   }
 
-  /**
-   * Count active carriers
-   * @returns {Promise<number>} Count of active carriers
-   */
+  
   async countActive() {
     return await Carrier.count({
       where: { is_active: true }

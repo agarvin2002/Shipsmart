@@ -15,11 +15,7 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Authenticate with USPS OAuth 2.0
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<string>} Access token
-   */
+  
   async authenticate(credentials) {
     const { client_id, client_secret } = credentials;
 
@@ -46,12 +42,7 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Get shipping rates from USPS
-   * @param {string} token - Access token
-   * @param {Object} rateRequest - Rate request payload
-   * @returns {Promise<Object>} Rate response
-   */
+  
   async getRates(token, rateRequest) {
     try {
       logger.info('[UspsProxy] Fetching rates');
@@ -76,11 +67,7 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Validate USPS credentials
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<boolean>} Validation result
-   */
+  
   async validateCredentials(credentials) {
     try {
       await this.authenticate(credentials);

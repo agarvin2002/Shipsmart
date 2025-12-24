@@ -1,10 +1,5 @@
 class FedexRateRequestBuilder {
-  /**
-   * Build FedEx rate request payload
-   * @param {Object} shipmentData - Shipment details
-   * @param {Object} credentials - FedEx credentials
-   * @returns {Object} FedEx API request payload
-   */
+  
   static buildRateRequest(shipmentData, credentials) {
     const { origin, destination, package: pkg, service_type } = shipmentData;
 
@@ -26,11 +21,7 @@ class FedexRateRequestBuilder {
     };
   }
 
-  /**
-   * Build address object
-   * @param {Object} address - Address data
-   * @returns {Object} FedEx address format
-   */
+  
   static buildAddress(address) {
     return {
       address: {
@@ -46,12 +37,7 @@ class FedexRateRequestBuilder {
     };
   }
 
-  /**
-   * Build package object
-   * @param {Object} pkg - Package data
-   * @param {number} sequenceNumber - Package sequence number (starts at 1)
-   * @returns {Object} FedEx package format
-   */
+  
   static buildPackage(pkg, sequenceNumber = 1) {
     return {
       sequenceNumber,
@@ -79,11 +65,7 @@ class FedexRateRequestBuilder {
     };
   }
 
-  /**
-   * Map service type to FedEx service codes
-   * @param {string} serviceType - Generic service type
-   * @returns {string} FedEx service code
-   */
+  
   static mapServiceType(serviceType) {
     const mapping = {
       ground: 'FEDEX_GROUND',
