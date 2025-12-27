@@ -36,7 +36,7 @@ module.exports = {
         base_url: 'https://wwwcie.ups.com',
         endpoints: JSON.stringify({
           authenticate: { path: '/security/v1/oauth/token', method: 'POST' },
-          get_rates: { path: '/api/rating/v2/Rate', method: 'POST' },
+          get_rates: { path: '/api/rating/v2/Shoptimeintransit', method: 'POST' },
           create_shipment: { path: '/api/shipments/v1/ship', method: 'POST' },
           track: { path: '/api/track/v1/details/{trackingNumber}', method: 'GET' },
           validate_address: { path: '/api/addressvalidation/v1/1', method: 'POST' },
@@ -63,7 +63,8 @@ module.exports = {
         base_url: 'https://apis-tem.usps.com',
         endpoints: JSON.stringify({
           authenticate: { path: '/oauth2/v3/token', method: 'POST' },
-          get_rates: { path: '/prices/v3/base-rates/search', method: 'POST' },
+          get_rates: { path: '/prices/v3/base-rates-list/search', method: 'POST' },
+          get_transit_time: { path: '/service-standards/v3/estimates', method: 'GET' },
           create_shipment: { path: '/labels/v3/label', method: 'POST' },
           track: { path: '/tracking/v3/tracking/{trackingNumber}', method: 'GET' },
           validate_address: { path: '/addresses/v3/address', method: 'POST' }

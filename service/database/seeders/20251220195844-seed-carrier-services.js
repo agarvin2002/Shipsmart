@@ -55,21 +55,18 @@ module.exports = {
 
     // USPS Services (carrier_id will be 3)
     const uspsServices = [
-      { service_code: 'PRIORITY_MAIL_EXPRESS', service_name: 'Priority Mail Express', description: '1-2 day service', category: 'express' },
-      { service_code: 'PRIORITY_MAIL', service_name: 'Priority Mail', description: '1-3 business days', category: 'priority' },
-      { service_code: 'FIRST_CLASS', service_name: 'First-Class Mail', description: '1-3 business days', category: 'first_class' },
-      { service_code: 'FIRST_CLASS_PACKAGE', service_name: 'First-Class Package Service', description: '1-3 business days for packages', category: 'first_class' },
-      { service_code: 'PARCEL_SELECT', service_name: 'USPS Parcel Select Ground', description: '2-8 business days', category: 'ground' },
-      { service_code: 'MEDIA_MAIL', service_name: 'Media Mail', description: '2-8 business days for media', category: 'ground' },
-      { service_code: 'LIBRARY_MAIL', service_name: 'Library Mail', description: 'For library materials', category: 'ground' },
-      { service_code: 'PRIORITY_MAIL_INTERNATIONAL', service_name: 'Priority Mail International', description: '6-10 business days', category: 'international' },
-      { service_code: 'PRIORITY_MAIL_EXPRESS_INTERNATIONAL', service_name: 'Priority Mail Express International', description: '3-5 business days', category: 'international' },
-      { service_code: 'FIRST_CLASS_MAIL_INTERNATIONAL', service_name: 'First-Class Mail International', description: 'Varies by destination', category: 'international' },
-      { service_code: 'FIRST_CLASS_PACKAGE_INTERNATIONAL', service_name: 'First-Class Package International Service', description: 'International packages', category: 'international' },
-      { service_code: 'PRIORITY_MAIL_CUBIC', service_name: 'Priority Mail Cubic', description: 'Cubic pricing for small packages', category: 'priority' },
-      { service_code: 'PRIORITY_MAIL_EXPRESS_FLAT_RATE', service_name: 'Priority Mail Express Flat Rate', description: 'Flat rate express', category: 'express' },
-      { service_code: 'PRIORITY_MAIL_FLAT_RATE', service_name: 'Priority Mail Flat Rate', description: 'Flat rate priority', category: 'priority' },
-      { service_code: 'PRIORITY_MAIL_REGIONAL_RATE', service_name: 'Priority Mail Regional Rate', description: 'Regional flat rate', category: 'priority' }
+      { service_code: 'PRIORITY_MAIL_EXPRESS', service_name: 'USPS Priority Mail Express', description: '1-2 day guaranteed delivery', category: 'express' },
+      { service_code: 'PRIORITY_MAIL_EXPRESS_FOR_LIVES', service_name: 'USPS Priority Mail Express for Lives', description: '3-day guaranteed delivery for critical shipments', category: 'express' },
+      { service_code: 'PRIORITY_MAIL', service_name: 'USPS Priority Mail', description: '1-3 day specific delivery', category: 'priority' },
+      { service_code: 'USPS_GROUND_ADVANTAGE', service_name: 'USPS Ground Advantage', description: '2-5 day specific delivery', category: 'ground' },
+      { service_code: 'FIRST-CLASS_MAIL_LETTERS', service_name: 'USPS First-Class Mail Letters', description: '1-3 business days', category: 'first_class' },
+      { service_code: 'FIRST-CLASS_MAIL_FLATS', service_name: 'USPS First-Class Mail Flats', description: '1-3 business days', category: 'first_class' },
+      { service_code: 'FIRST-CLASS_MAIL_CARDS', service_name: 'USPS First-Class Mail Cards', description: '1-3 business days', category: 'first_class' },
+      { service_code: 'PARCEL_SELECT', service_name: 'USPS Parcel Select', description: '2-8 business days', category: 'ground' },
+      { service_code: 'MEDIA_MAIL', service_name: 'USPS Media Mail', description: '2-8 business days for media', category: 'ground' },
+      { service_code: 'LIBRARY_MAIL', service_name: 'USPS Library Mail', description: 'For library materials', category: 'ground' },
+      { service_code: 'BOUND_PRINTED_MATTER', service_name: 'USPS Bound Printed Matter', description: 'For bound printed materials', category: 'ground' },
+      { service_code: 'PRIORITY_MAIL_INTERNATIONAL', service_name: 'USPS Priority Mail International', description: '6-10 business days', category: 'international' }
     ];
 
     // Insert FedEx services
