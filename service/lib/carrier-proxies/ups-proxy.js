@@ -53,7 +53,7 @@ class UpsProxy extends BaseCarrierProxy {
     try {
       logger.info('[UpsProxy] Fetching rates');
 
-      const response = await this.makeRequest('/api/rating/v2/Rate', {
+      const response = await this.makeRequest('/api/rating/v2/Shoptimeintransit', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
