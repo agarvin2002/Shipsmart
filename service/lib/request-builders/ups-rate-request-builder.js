@@ -1,7 +1,11 @@
 class UpsRateRequestBuilder {
   
   static buildRateRequest(shipmentData, credentials) {
-    const { origin, destination, package: pkg, service_type } = shipmentData;
+    const { origin, destination, package: pkg } = shipmentData;
+
+    const pickupDate = new Date();
+    pickupDate.setDate(pickupDate.getDate() + 1);
+    const formattedDate = pickupDate.toISOString().split('T')[0].replace(/-/g, '');
 
     return {
       RateRequest: {
@@ -19,8 +23,12 @@ class UpsRateRequestBuilder {
             Name: destination.company_name || 'Recipient',
             Address: this.buildAddress(destination),
           },
-          Service: {
-            Code: this.mapServiceType(service_type || 'ground'),
+          DeliveryTimeInformation: {
+            PackageBillType: '03',
+            Pickup: {
+              Date: formattedDate,
+              Time: '1000',
+            },
           },
           Package: [this.buildPackage(pkg)],
         },
@@ -30,12 +38,7 @@ class UpsRateRequestBuilder {
 
   
   static buildAddress(address) {
-    // UPS expects AddressLine as a single string, not an array
-    const addressLine = address.street_address_1 || address.AddressLine || '';
-
     return {
-      AddressLine: addressLine,
-      City: address.city || address.City,
       StateProvinceCode: address.state_province || address.state || address.StateProvinceCode || "IL",
       PostalCode: address.postal_code || address.PostalCode,
       CountryCode: address.country || address.CountryCode || 'US',
@@ -47,16 +50,15 @@ class UpsRateRequestBuilder {
     const weightUnit = pkg.weight_unit === 'kg' ? 'KGS' : 'LBS';
     const dimensionUnit = pkg.dimension_unit === 'cm' ? 'CM' : 'IN';
 
-    // Handle different dimension formats
     const dimensions = pkg.dimensions || {
       length: pkg.length,
       width: pkg.width,
       height: pkg.height,
     };
 
-    const packageData = {
+    return {
       PackagingType: {
-        Code: '02', // 02 = Package/Customer Supplied
+        Code: '02',
       },
       Dimensions: {
         UnitOfMeasurement: {
@@ -73,31 +75,8 @@ class UpsRateRequestBuilder {
         Weight: pkg.weight.toString(),
       },
     };
-
-    // Add declared value if provided
-    if (pkg.value) {
-      packageData.PackageServiceOptions = {
-        DeclaredValue: {
-          CurrencyCode: 'USD',
-          MonetaryValue: pkg.value.toString(),
-        },
-      };
-    }
-
-    return packageData;
   }
 
-  
-  static mapServiceType(serviceType) {
-    const mapping = {
-      ground: '03', // UPS Ground
-      express: '02', // UPS 2nd Day Air
-      overnight: '01', // UPS Next Day Air
-      international: '08', // UPS Worldwide Expedited
-    };
-
-    return mapping[serviceType] || '03';
-  }
 }
 
 module.exports = UpsRateRequestBuilder;

@@ -77,13 +77,15 @@ class UpsRateService extends BaseCarrierRateService {
         const negotiatedRate = rate.NegotiatedRateCharges?.TotalCharge;
         const totalCharges = negotiatedRate || rate.TotalCharges;
 
+        const transitInfo = this.extractTransitTime(rate);
+
         return this.formatRate({
           service_name: this.getServiceName(rate.Service?.Code),
           service_code: rate.Service?.Code,
           rate_amount: parseFloat(totalCharges?.MonetaryValue || 0),
           currency: totalCharges?.CurrencyCode || 'USD',
-          delivery_days: rate.GuaranteedDelivery?.BusinessDaysInTransit || this.estimateTransitDays(rate.Service?.Code),
-          estimated_delivery_date: rate.GuaranteedDelivery?.DeliveryByTime || null,
+          delivery_days: transitInfo.deliveryDays,
+          estimated_delivery_date: transitInfo.estimatedDeliveryDate,
           raw_response: rate,
         });
       });
@@ -96,7 +98,31 @@ class UpsRateService extends BaseCarrierRateService {
     return formattedRates;
   }
 
-  
+  extractTransitTime(rate) {
+    let deliveryDays = null;
+    let estimatedDeliveryDate = null;
+
+    if (rate.TimeInTransit?.ServiceSummary?.EstimatedArrival) {
+      const estimatedArrival = rate.TimeInTransit.ServiceSummary.EstimatedArrival;
+      deliveryDays = estimatedArrival.BusinessDaysInTransit
+        ? parseInt(estimatedArrival.BusinessDaysInTransit)
+        : null;
+      estimatedDeliveryDate = estimatedArrival.Date || estimatedArrival.Arrival?.Date || null;
+    } else if (rate.GuaranteedDelivery) {
+      deliveryDays = rate.GuaranteedDelivery.BusinessDaysInTransit
+        ? parseInt(rate.GuaranteedDelivery.BusinessDaysInTransit)
+        : null;
+      estimatedDeliveryDate = rate.GuaranteedDelivery.DeliveryByTime || null;
+    }
+
+    if (!deliveryDays) {
+      deliveryDays = this.estimateTransitDays(rate.Service?.Code);
+    }
+
+    return { deliveryDays, estimatedDeliveryDate };
+  }
+
+
   getServiceName(code) {
     const serviceNames = {
       '01': 'UPS Next Day Air',
