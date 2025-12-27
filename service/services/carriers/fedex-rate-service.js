@@ -79,13 +79,17 @@ class FedexRateService extends BaseCarrierRateService {
 
       const totalCharge = ratedShipment.totalNetCharge || ratedShipment.totalBaseCharge;
 
+      const transitDays = this.extractTransitDays(rate);
+      const deliveryDate = rate.operationalDetail?.deliveryDate ||
+                          rate.commit?.dateDetail?.dayFormat || null;
+
       formattedRates.push(this.formatRate({
         service_name: rate.serviceName || rate.serviceType,
         service_code: rate.serviceType,
         rate_amount: parseFloat(totalCharge),
         currency: ratedShipment.currency || 'USD',
-        delivery_days: rate.commit?.transitDays || this.estimateTransitDays(rate.serviceType),
-        estimated_delivery_date: rate.commit?.dateDetail?.date || null,
+        delivery_days: transitDays,
+        estimated_delivery_date: deliveryDate,
         raw_response: rate,
       }));
     });
@@ -99,6 +103,23 @@ class FedexRateService extends BaseCarrierRateService {
   }
 
   
+  extractTransitDays(rate) {
+    if (rate.commit?.transitDays?.minimumTransitTime) {
+      const transitTimeMap = {
+        'ONE_DAY': 1,
+        'TWO_DAYS': 2,
+        'THREE_DAYS': 3,
+        'FOUR_DAYS': 4,
+        'FIVE_DAYS': 5,
+        'SIX_DAYS': 6,
+        'SEVEN_DAYS': 7,
+      };
+      return transitTimeMap[rate.commit.transitDays.minimumTransitTime] || null;
+    }
+
+    return this.estimateTransitDays(rate.serviceType);
+  }
+
   estimateTransitDays(serviceType) {
     const transitDaysMap = {
       STANDARD_OVERNIGHT: 1,

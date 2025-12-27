@@ -1,19 +1,21 @@
 class FedexRateRequestBuilder {
   
   static buildRateRequest(shipmentData, credentials) {
-    const { origin, destination, package: pkg, service_type } = shipmentData;
+    const { origin, destination, package: pkg } = shipmentData;
 
     return {
       accountNumber: {
         value: credentials.account_number || credentials.account_numbers?.[0],
+      },
+      rateRequestControlParameters: {
+        returnTransitTimes: true,
       },
       requestedShipment: {
         shipTimestamp: new Date().toISOString(),
         shipper: this.buildAddress(origin),
         recipient: this.buildAddress(destination),
         pickupType: 'CONTACT_FEDEX_TO_SCHEDULE',
-        serviceType: this.mapServiceType(service_type || 'ground'),
-        rateRequestType: ['LIST', 'ACCOUNT'],
+        rateRequestType: ['ACCOUNT'],
         requestedPackageLineItems: [
           this.buildPackage(pkg, 1),
         ],
@@ -25,12 +27,6 @@ class FedexRateRequestBuilder {
   static buildAddress(address) {
     return {
       address: {
-        streetLines: [
-          address.street_address_1,
-          ...(address.street_address_2 ? [address.street_address_2] : []),
-        ].filter(Boolean),
-        city: address.city,
-        stateOrProvinceCode: address.state_province || address.state,
         postalCode: address.postal_code,
         countryCode: address.country || 'US',
       },
@@ -39,43 +35,28 @@ class FedexRateRequestBuilder {
 
   
   static buildPackage(pkg, sequenceNumber = 1) {
+    const dimensions = pkg.dimensions || {
+      length: pkg.length,
+      width: pkg.width,
+      height: pkg.height,
+    };
+
     return {
       sequenceNumber,
       weight: {
-        units: 'LB',
+        units: pkg.weight_unit === 'kg' ? 'KG' : 'LB',
         value: pkg.weight,
       },
       dimensions: {
-        length: pkg.dimensions.length,
-        width: pkg.dimensions.width,
-        height: pkg.dimensions.height,
-        units: 'IN',
+        length: dimensions.length || 1,
+        width: dimensions.width || 1,
+        height: dimensions.height || 1,
+        units: pkg.dimension_unit === 'cm' ? 'CM' : 'IN',
       },
-      customerReferences: [
-        {
-          customerReferenceType: 'CUSTOMER_REFERENCE',
-        },
-      ],
-      ...(pkg.value && {
-        declaredValue: {
-          amount: pkg.value,
-          currency: 'USD',
-        },
-      }),
     };
   }
 
   
-  static mapServiceType(serviceType) {
-    const mapping = {
-      ground: 'FEDEX_GROUND',
-      express: 'FEDEX_EXPRESS_SAVER',
-      overnight: 'STANDARD_OVERNIGHT',
-      international: 'INTERNATIONAL_PRIORITY',
-    };
-
-    return mapping[serviceType] || 'FEDEX_GROUND';
-  }
 }
 
 module.exports = FedexRateRequestBuilder;
