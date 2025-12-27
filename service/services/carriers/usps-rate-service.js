@@ -19,17 +19,21 @@ class UspsRateService extends BaseCarrierRateService {
       // 1. Authenticate with OAuth 2.0
       const token = await this.proxy.authenticate(this.decryptedCredentials);
 
-      // 2. Build rate request
-      const rateRequest = UspsRateRequestBuilder.buildRateRequest(
-        shipmentData,
-        this.decryptedCredentials
-      );
+      // 2. Build requests
+      const rateRequest = UspsRateRequestBuilder.buildRateRequest(shipmentData);
+      const transitTimeRequest = UspsRateRequestBuilder.buildTransitTimeRequest(shipmentData);
 
-      // 3. Fetch rates
-      const response = await this.proxy.getRates(token, rateRequest);
+      // 3. Fetch rates and transit times in parallel
+      const [ratesResponse, transitTimesResponse] = await Promise.all([
+        this.proxy.getRates(token, rateRequest),
+        this.proxy.getTransitTime(token, transitTimeRequest).catch(err => {
+          logger.warn('[UspsRateService] Transit time fetch failed, continuing without it', { error: err.message });
+          return [];
+        }),
+      ]);
 
-      // 4. Transform and return rates
-      return this.transformRates(response);
+      // 4. Transform and return rates with transit time data
+      return this.transformRates(ratesResponse, transitTimesResponse);
     } catch (error) {
       logger.error('[UspsRateService] Failed to get rates', { error: error.message });
       throw error;
@@ -37,62 +41,117 @@ class UspsRateService extends BaseCarrierRateService {
   }
 
   
-  transformRates(response) {
-    const rates = response.rates || [];
+  transformRates(ratesResponse, transitTimesResponse = []) {
+    const rateOptions = ratesResponse.rateOptions || [];
 
-    if (rates.length === 0) {
+    if (rateOptions.length === 0) {
       logger.warn('[UspsRateService] No rates returned from USPS');
       return [];
     }
 
-    // Get service codes from user's selected services
+    const transitTimeMap = this.buildTransitTimeMap(transitTimesResponse);
+
     const selectedServiceCodes = this.services.map(s => s.service_code);
 
     logger.info('[UspsRateService] Filtering rates', {
-      totalRates: rates.length,
+      totalRateOptions: rateOptions.length,
       selectedServices: selectedServiceCodes.length,
-      selectedServiceCodes
+      selectedServiceCodes,
+      transitTimeServices: Object.keys(transitTimeMap).length
     });
 
-    const formattedRates = rates
-      .filter((rate) => {
-        const serviceCode = rate.mailClass;
-        // Filter: Only include rates for user's selected services
-        if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
-          logger.debug('[UspsRateService] Skipping non-selected service', {
-            serviceCode
-          });
-          return false;
-        }
-        return true;
-      })
-      .map((rate) => {
-        return this.formatRate({
-          service_name: rate.description || UspsRateRequestBuilder.getServiceName(rate.mailClass),
-          service_code: rate.mailClass,
-          rate_amount: parseFloat(rate.price || 0),
-          currency: 'USD',
-          delivery_days: this.estimateTransitDays(rate.mailClass),
-          estimated_delivery_date: null,
-          raw_response: rate,
-        });
-      });
+    const formattedRates = [];
+    const processedMailClasses = new Set();
+
+    rateOptions.forEach((rateOption) => {
+      if (!rateOption.rates || rateOption.rates.length === 0) {
+        return;
+      }
+
+      const standardRate = rateOption.rates.find(rate =>
+        rate.rateIndicator === 'SP' &&
+        rate.processingCategory === 'MACHINABLE' &&
+        rate.destinationEntryFacilityType === 'NONE'
+      );
+
+      if (!standardRate) {
+        return;
+      }
+
+      const mailClass = standardRate.mailClass;
+
+      if (processedMailClasses.has(mailClass)) {
+        return;
+      }
+
+      if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(mailClass)) {
+        logger.debug('[UspsRateService] Skipping non-selected service', { mailClass });
+        return;
+      }
+
+      processedMailClasses.add(mailClass);
+
+      const transitInfo = transitTimeMap[mailClass] || {};
+      const deliveryDays = transitInfo.serviceStandard
+        ? parseInt(transitInfo.serviceStandard)
+        : this.estimateTransitDays(mailClass);
+
+      formattedRates.push(this.formatRate({
+        service_name: standardRate.productName || standardRate.description || UspsRateRequestBuilder.getServiceName(mailClass),
+        service_code: mailClass,
+        rate_amount: parseFloat(standardRate.price || 0),
+        currency: 'USD',
+        delivery_days: deliveryDays,
+        estimated_delivery_date: transitInfo.scheduledDeliveryDateTime || null,
+        raw_response: rateOption,
+      }));
+    });
 
     logger.info('[UspsRateService] Filtered rates', {
-      inputCount: rates.length,
+      inputCount: rateOptions.length,
       outputCount: formattedRates.length
     });
 
     return formattedRates;
   }
 
+  buildTransitTimeMap(transitTimesResponse) {
+    const transitTimeMap = {};
+
+    if (!Array.isArray(transitTimesResponse)) {
+      return transitTimeMap;
+    }
+
+    transitTimesResponse.forEach((transit) => {
+      if (transit.mailClass) {
+        transitTimeMap[transit.mailClass] = {
+          serviceStandard: transit.serviceStandard,
+          serviceStandardMessage: transit.serviceStandardMessage,
+          scheduledDeliveryDateTime: transit.delivery?.scheduledDeliveryDateTime,
+          guaranteedDelivery: transit.delivery?.guaranteedDelivery,
+        };
+      }
+    });
+
+    return transitTimeMap;
+  }
+
   
   estimateTransitDays(mailClass) {
     const transitDaysMap = {
-      'PRIORITY_MAIL_EXPRESS': 1,
+      'PRIORITY_MAIL_EXPRESS': 2,
+      'PRIORITY_MAIL_EXPRESS_FOR_LIVES': 3,
       'PRIORITY_MAIL': 3,
-      'FIRST_CLASS': 3,
-      'PARCEL_SELECT': 7,
+      'USPS_GROUND_ADVANTAGE': 3,
+      'FIRST_CLASS_MAIL_LETTERS': 3,
+      'FIRST_CLASS_MAIL_FLATS': 3,
+      'FIRST-CLASS_MAIL_LETTERS': 3,
+      'FIRST-CLASS_MAIL_FLATS': 3,
+      'FIRST-CLASS_MAIL_CARDS': 3,
+      'PARCEL_SELECT': 3,
+      'MEDIA_MAIL': 5,
+      'LIBRARY_MAIL': 5,
+      'BOUND_PRINTED_MATTER': 5,
       'PRIORITY_MAIL_INTERNATIONAL': 10,
     };
 

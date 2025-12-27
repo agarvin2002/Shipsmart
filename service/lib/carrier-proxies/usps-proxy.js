@@ -47,7 +47,7 @@ class UspsProxy extends BaseCarrierProxy {
     try {
       logger.info('[UspsProxy] Fetching rates');
 
-      const response = await this.makeRequest('/prices/v3/base-rates/search', {
+      const response = await this.makeRequest('/prices/v3/base-rates-list/search', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -57,12 +57,39 @@ class UspsProxy extends BaseCarrierProxy {
       });
 
       logger.info('[UspsProxy] Rates fetched successfully', {
-        rateCount: response.rates?.length || 0,
+        rateCount: response.rateOptions?.length || 0,
       });
 
       return response;
     } catch (error) {
       logger.error('[UspsProxy] Rate fetch failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  async getTransitTime(token, transitTimeRequest) {
+    try {
+      logger.info('[UspsProxy] Fetching transit times');
+
+      const { originZIPCode, destinationZIPCode } = transitTimeRequest;
+
+      const response = await this.makeRequest(
+        `/service-standards/v3/estimates?originZIPCode=${originZIPCode}&destinationZIPCode=${destinationZIPCode}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      logger.info('[UspsProxy] Transit times fetched successfully', {
+        serviceCount: Array.isArray(response) ? response.length : 0,
+      });
+
+      return response;
+    } catch (error) {
+      logger.error('[UspsProxy] Transit time fetch failed', { error: error.message });
       throw error;
     }
   }
