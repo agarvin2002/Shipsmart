@@ -29,7 +29,7 @@ class FedexRateService extends BaseCarrierRateService {
       const response = await this.proxy.getRates(token, rateRequest);
 
       // 4. Transform and return rates
-      return this.transformRates(response);
+      return this.transformRates(response, shipmentData);
     } catch (error) {
       logger.error('[FedexRateService] Failed to get rates', { error: error.message });
       throw error;
@@ -37,7 +37,7 @@ class FedexRateService extends BaseCarrierRateService {
   }
 
   
-  transformRates(response) {
+  transformRates(response, shipmentData) {
     const rateReplyDetails = response.output?.rateReplyDetails || [];
 
     if (rateReplyDetails.length === 0) {
@@ -45,20 +45,25 @@ class FedexRateService extends BaseCarrierRateService {
       return [];
     }
 
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
     // Get service codes from user's selected services
     const selectedServiceCodes = this.services.map(s => s.service_code);
 
     logger.info('[FedexRateService] Filtering rates', {
       totalRates: rateReplyDetails.length,
       selectedServices: selectedServiceCodes.length,
-      selectedServiceCodes
+      selectedServiceCodes,
+      isInternational
     });
 
     const formattedRates = [];
 
     rateReplyDetails.forEach((rate) => {
-      // Filter: Only include rates for user's selected services
-      if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(rate.serviceType)) {
+      // Filter: For international shipments, show all available services
+      // For domestic shipments, only include rates for user's selected services
+      if (!isInternational && selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(rate.serviceType)) {
         logger.debug('[FedexRateService] Skipping non-selected service', {
           serviceType: rate.serviceType
         });
@@ -79,9 +84,9 @@ class FedexRateService extends BaseCarrierRateService {
 
       const totalCharge = ratedShipment.totalNetCharge || ratedShipment.totalBaseCharge;
 
-      const transitDays = this.extractTransitDays(rate);
-      const deliveryDate = rate.operationalDetail?.deliveryDate ||
-                          rate.commit?.dateDetail?.dayFormat || null;
+      // For international shipments, don't consider delivery dates
+      const transitDays = isInternational ? null : this.extractTransitDays(rate);
+      const deliveryDate = isInternational ? null : (rate.operationalDetail?.deliveryDate || rate.commit?.dateDetail?.dayFormat || null);
 
       formattedRates.push(this.formatRate({
         service_name: rate.serviceName || rate.serviceType,
@@ -100,6 +105,13 @@ class FedexRateService extends BaseCarrierRateService {
     });
 
     return formattedRates;
+  }
+
+
+  isInternationalShipment(origin, destination) {
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
   }
 
   
