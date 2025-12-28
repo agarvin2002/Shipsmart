@@ -40,7 +40,7 @@ class CarrierRateOrchestrator {
       const rates = await this.fetchRatesFromCarriers(carriers, enrichedData);
 
       // 6. Sort and analyze rates
-      const rateComparison = this.analyzeRates(rates);
+      const rateComparison = this.analyzeRates(rates, enrichedData);
 
       // 7. Cache the results
       await this.cacheRates(cacheKey, rateComparison);
@@ -110,7 +110,7 @@ class CarrierRateOrchestrator {
   }
 
   
-  analyzeRates(rates) {
+  analyzeRates(rates, shipmentData = {}) {
     if (rates.length === 0) {
       return {
         total_carriers: 0,
@@ -121,16 +121,19 @@ class CarrierRateOrchestrator {
       };
     }
 
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
     // Sort by price (cheapest first)
     const sortedByPrice = [...rates].sort((a, b) => a.rate_amount - b.rate_amount);
 
-    // Sort by delivery time (fastest first)
+    // Sort by delivery time (fastest first) - only for domestic shipments
     const sortedBySpeed = [...rates]
       .filter(r => r.delivery_days !== null)
       .sort((a, b) => a.delivery_days - b.delivery_days);
 
     const cheapest = sortedByPrice[0];
-    const fastest = sortedBySpeed[0] || sortedByPrice[0];
+    const fastest = isInternational ? null : (sortedBySpeed[0] || null);
     const mostExpensive = sortedByPrice[sortedByPrice.length - 1];
 
     return {
@@ -141,6 +144,14 @@ class CarrierRateOrchestrator {
       all_rates: sortedByPrice,
       potential_savings: mostExpensive.rate_amount - cheapest.rate_amount,
     };
+  }
+
+
+  isInternationalShipment(origin, destination) {
+    if (!origin || !destination) return false;
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
   }
 
   
