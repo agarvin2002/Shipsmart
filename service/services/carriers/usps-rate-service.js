@@ -11,43 +11,58 @@ class UspsRateService extends BaseCarrierRateService {
     this.carrierName = 'usps';
   }
 
-  
+
   async getRates(shipmentData) {
     try {
       this.logRateFetch(shipmentData);
 
+      // Check if international shipment
+      const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
       // 1. Authenticate with OAuth 2.0
       const token = await this.proxy.authenticate(this.decryptedCredentials);
 
-      // 2. Build requests
+      // 2. Build rate request
       const rateRequest = UspsRateRequestBuilder.buildRateRequest(shipmentData);
-      const transitTimeRequest = UspsRateRequestBuilder.buildTransitTimeRequest(shipmentData);
 
-      // 3. Fetch rates and transit times in parallel
-      const [ratesResponse, transitTimesResponse] = await Promise.all([
-        this.proxy.getRates(token, rateRequest),
-        this.proxy.getTransitTime(token, transitTimeRequest).catch(err => {
-          logger.warn('[UspsRateService] Transit time fetch failed, continuing without it', { error: err.message });
-          return [];
-        }),
-      ]);
+      // 3. Fetch rates (skip transit time API for international)
+      let ratesResponse;
+      let transitTimesResponse = [];
+
+      if (isInternational) {
+        // For international, only fetch rates (no transit time API available)
+        ratesResponse = await this.proxy.getRates(token, rateRequest, true);
+      } else {
+        // For domestic, fetch both rates and transit times in parallel
+        const transitTimeRequest = UspsRateRequestBuilder.buildTransitTimeRequest(shipmentData);
+        [ratesResponse, transitTimesResponse] = await Promise.all([
+          this.proxy.getRates(token, rateRequest, false),
+          this.proxy.getTransitTime(token, transitTimeRequest).catch(err => {
+            logger.warn('[UspsRateService] Transit time fetch failed, continuing without it', { error: err.message });
+            return [];
+          }),
+        ]);
+      }
 
       // 4. Transform and return rates with transit time data
-      return this.transformRates(ratesResponse, transitTimesResponse);
+      return this.transformRates(ratesResponse, transitTimesResponse, shipmentData);
     } catch (error) {
       logger.error('[UspsRateService] Failed to get rates', { error: error.message });
       throw error;
     }
   }
 
-  
-  transformRates(ratesResponse, transitTimesResponse = []) {
+
+  transformRates(ratesResponse, transitTimesResponse = [], shipmentData) {
     const rateOptions = ratesResponse.rateOptions || [];
 
     if (rateOptions.length === 0) {
       logger.warn('[UspsRateService] No rates returned from USPS');
       return [];
     }
+
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
 
     const transitTimeMap = this.buildTransitTimeMap(transitTimesResponse);
 
@@ -57,6 +72,7 @@ class UspsRateService extends BaseCarrierRateService {
       totalRateOptions: rateOptions.length,
       selectedServices: selectedServiceCodes.length,
       selectedServiceCodes,
+      isInternational,
       transitTimeServices: Object.keys(transitTimeMap).length
     });
 
@@ -68,10 +84,14 @@ class UspsRateService extends BaseCarrierRateService {
         return;
       }
 
+      // For international: filter by INTERNATIONAL_SERVICE_CENTER
+      // For domestic: filter by NONE
+      const expectedFacilityType = isInternational ? 'INTERNATIONAL_SERVICE_CENTER' : 'NONE';
+
       const standardRate = rateOption.rates.find(rate =>
         rate.rateIndicator === 'SP' &&
         rate.processingCategory === 'MACHINABLE' &&
-        rate.destinationEntryFacilityType === 'NONE'
+        rate.destinationEntryFacilityType === expectedFacilityType
       );
 
       if (!standardRate) {
@@ -84,17 +104,23 @@ class UspsRateService extends BaseCarrierRateService {
         return;
       }
 
-      if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(mailClass)) {
+      // Filter: For international shipments, show all available services
+      // For domestic shipments, only include rates for user's selected services
+      if (!isInternational && selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(mailClass)) {
         logger.debug('[UspsRateService] Skipping non-selected service', { mailClass });
         return;
       }
 
       processedMailClasses.add(mailClass);
 
-      const transitInfo = transitTimeMap[mailClass] || {};
-      const deliveryDays = transitInfo.serviceStandard
-        ? parseInt(transitInfo.serviceStandard)
-        : this.estimateTransitDays(mailClass);
+      // For international shipments, don't consider delivery dates
+      const deliveryDays = isInternational ? null : (
+        transitTimeMap[mailClass]?.serviceStandard
+          ? parseInt(transitTimeMap[mailClass].serviceStandard)
+          : this.estimateTransitDays(mailClass)
+      );
+
+      const estimatedDeliveryDate = isInternational ? null : (transitTimeMap[mailClass]?.scheduledDeliveryDateTime || null);
 
       formattedRates.push(this.formatRate({
         service_name: standardRate.productName || standardRate.description || UspsRateRequestBuilder.getServiceName(mailClass),
@@ -102,7 +128,7 @@ class UspsRateService extends BaseCarrierRateService {
         rate_amount: parseFloat(standardRate.price || 0),
         currency: 'USD',
         delivery_days: deliveryDays,
-        estimated_delivery_date: transitInfo.scheduledDeliveryDateTime || null,
+        estimated_delivery_date: estimatedDeliveryDate,
         raw_response: rateOption,
       }));
     });
@@ -136,7 +162,7 @@ class UspsRateService extends BaseCarrierRateService {
     return transitTimeMap;
   }
 
-  
+
   estimateTransitDays(mailClass) {
     const transitDaysMap = {
       'PRIORITY_MAIL_EXPRESS': 2,
@@ -156,6 +182,12 @@ class UspsRateService extends BaseCarrierRateService {
     };
 
     return transitDaysMap[mailClass] || null;
+  }
+
+  isInternationalShipment(origin, destination) {
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
   }
 
   

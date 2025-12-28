@@ -42,12 +42,16 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  
-  async getRates(token, rateRequest) {
-    try {
-      logger.info('[UspsProxy] Fetching rates');
 
-      const response = await this.makeRequest('/prices/v3/base-rates-list/search', {
+  async getRates(token, rateRequest, isInternational = false) {
+    try {
+      const endpoint = isInternational
+        ? '/international-prices/v3/base-rates-list/search'
+        : '/prices/v3/base-rates-list/search';
+
+      logger.info('[UspsProxy] Fetching rates', { endpoint, isInternational });
+
+      const response = await this.makeRequest(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
