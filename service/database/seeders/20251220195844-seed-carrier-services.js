@@ -14,10 +14,11 @@ module.exports = {
       { service_code: 'FIRST_OVERNIGHT', service_name: 'FedEx First Overnight', description: 'Next business day by 8:00 AM', category: 'overnight' },
       { service_code: 'FEDEX_FREIGHT_PRIORITY', service_name: 'FedEx Freight Priority', description: 'Fast freight service', category: 'freight' },
       { service_code: 'FEDEX_FREIGHT_ECONOMY', service_name: 'FedEx Freight Economy', description: 'Cost-effective freight', category: 'freight' },
-      { service_code: 'INTERNATIONAL_PRIORITY', service_name: 'FedEx International Priority', description: '1-3 business days', category: 'international' },
-      { service_code: 'INTERNATIONAL_ECONOMY', service_name: 'FedEx International Economy', description: '2-5 business days', category: 'international' },
-      { service_code: 'INTERNATIONAL_FIRST', service_name: 'FedEx International First', description: 'Next business day', category: 'international' },
-      { service_code: 'INTERNATIONAL_GROUND', service_name: 'FedEx International Ground', description: 'Cost-effective international', category: 'international' },
+      { service_code: 'FEDEX_INTERNATIONAL_PRIORITY', service_name: 'FedEx International Priority', description: 'International express delivery', category: 'international' },
+      { service_code: 'INTERNATIONAL_ECONOMY', service_name: 'FedEx International Economy', description: 'Cost-effective international', category: 'international' },
+      { service_code: 'FEDEX_INTERNATIONAL_CONNECT_PLUS', service_name: 'FedEx International Connect Plus', description: 'International economy service', category: 'international' },
+      { service_code: 'INTERNATIONAL_FIRST', service_name: 'FedEx International First', description: 'Next business day international', category: 'international' },
+      { service_code: 'INTERNATIONAL_GROUND', service_name: 'FedEx International Ground', description: 'Ground international shipping', category: 'international' },
       { service_code: 'FEDEX_1_DAY_FREIGHT', service_name: 'FedEx 1Day Freight', description: 'Next business day freight', category: 'freight' },
       { service_code: 'FEDEX_2_DAY_FREIGHT', service_name: 'FedEx 2Day Freight', description: '2 business days freight', category: 'freight' },
       { service_code: 'FEDEX_3_DAY_FREIGHT', service_name: 'FedEx 3Day Freight', description: '3 business days freight', category: 'freight' },
@@ -66,7 +67,8 @@ module.exports = {
       { service_code: 'MEDIA_MAIL', service_name: 'USPS Media Mail', description: '2-8 business days for media', category: 'ground' },
       { service_code: 'LIBRARY_MAIL', service_name: 'USPS Library Mail', description: 'For library materials', category: 'ground' },
       { service_code: 'BOUND_PRINTED_MATTER', service_name: 'USPS Bound Printed Matter', description: 'For bound printed materials', category: 'ground' },
-      { service_code: 'PRIORITY_MAIL_INTERNATIONAL', service_name: 'USPS Priority Mail International', description: '6-10 business days', category: 'international' }
+      { service_code: 'PRIORITY_MAIL_INTERNATIONAL', service_name: 'USPS Priority Mail International', description: '6-10 business days', category: 'international' },
+      { service_code: 'PRIORITY_MAIL_EXPRESS_INTERNATIONAL', service_name: 'USPS Priority Mail Express International', description: 'International express delivery', category: 'international' }
     ];
 
     // Insert FedEx services
