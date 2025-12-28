@@ -29,15 +29,15 @@ class UpsRateService extends BaseCarrierRateService {
       const response = await this.proxy.getRates(token, rateRequest);
 
       // 4. Transform and return rates
-      return this.transformRates(response);
+      return this.transformRates(response, shipmentData);
     } catch (error) {
       logger.error('[UpsRateService] Failed to get rates', { error: error.message });
       throw error;
     }
   }
 
-  
-  transformRates(response) {
+
+  transformRates(response, shipmentData) {
     // UPS can return RatedShipment as a single object or an array
     let ratedShipments = response.RateResponse?.RatedShipment || [];
 
@@ -51,20 +51,25 @@ class UpsRateService extends BaseCarrierRateService {
       return [];
     }
 
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
     // Get service codes from user's selected services
     const selectedServiceCodes = this.services.map(s => s.service_code);
 
     logger.info('[UpsRateService] Filtering rates', {
       totalRates: ratedShipments.length,
       selectedServices: selectedServiceCodes.length,
-      selectedServiceCodes
+      selectedServiceCodes,
+      isInternational
     });
 
     const formattedRates = ratedShipments
       .filter((rate) => {
         const serviceCode = rate.Service?.Code;
-        // Filter: Only include rates for user's selected services
-        if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
+        // Filter: For international shipments, show all available services
+        // For domestic shipments, only include rates for user's selected services
+        if (!isInternational && selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
           logger.debug('[UpsRateService] Skipping non-selected service', {
             serviceCode
           });
@@ -77,7 +82,8 @@ class UpsRateService extends BaseCarrierRateService {
         const negotiatedRate = rate.NegotiatedRateCharges?.TotalCharge;
         const totalCharges = negotiatedRate || rate.TotalCharges;
 
-        const transitInfo = this.extractTransitTime(rate);
+        // For international shipments, don't consider delivery dates
+        const transitInfo = isInternational ? { deliveryDays: null, estimatedDeliveryDate: null } : this.extractTransitTime(rate);
 
         return this.formatRate({
           service_name: this.getServiceName(rate.Service?.Code),
@@ -120,6 +126,13 @@ class UpsRateService extends BaseCarrierRateService {
     }
 
     return { deliveryDays, estimatedDeliveryDate };
+  }
+
+
+  isInternationalShipment(origin, destination) {
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
   }
 
 
