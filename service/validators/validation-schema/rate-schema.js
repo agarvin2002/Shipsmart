@@ -7,6 +7,8 @@ const addressSchema = Joi.object({
   state_province: Joi.string().optional(),
   country: Joi.string().length(2).uppercase().default('US'),
   company_name: Joi.string().optional(),
+  address_line1: Joi.string().optional(),
+  street_lines: Joi.array().items(Joi.string()).optional(),
 });
 
 const packageSchema = Joi.object({
@@ -14,7 +16,7 @@ const packageSchema = Joi.object({
   length: Joi.number().positive().max(108).optional(),
   width: Joi.number().positive().max(108).optional(),
   height: Joi.number().positive().max(108).optional(),
-  weight_unit: Joi.string().valid('lb', 'kg').default('lb'),
+  weight_unit: Joi.string().valid('lb', 'kg', 'lbs').default('lb'),
   dimension_unit: Joi.string().valid('in', 'cm').default('in'),
   dimensions: Joi.object({
     length: Joi.number().positive().max(108).required(),
@@ -22,6 +24,17 @@ const packageSchema = Joi.object({
     height: Joi.number().positive().max(108).required(),
   }).optional(),
   value: Joi.number().positive().optional(),
+  declared_value: Joi.number().positive().optional(),
+  description: Joi.string().optional(),
+});
+
+const customsSchema = Joi.object({
+  customs_value: Joi.number().positive().optional(),
+  currency: Joi.string().length(3).uppercase().optional().default('USD'),
+  commodity_description: Joi.string().optional(),
+  quantity: Joi.number().integer().positive().optional(),
+  quantity_units: Joi.string().optional(),
+  duties_payment_type: Joi.string().valid('SENDER', 'RECIPIENT', 'THIRD_PARTY').optional().default('SENDER'),
 });
 
 const getRatesSchema = Joi.object({
@@ -32,6 +45,7 @@ const getRatesSchema = Joi.object({
   destination: addressSchema.optional(),
   package: packageSchema.required(),
   service_type: Joi.string().valid('ground', 'express', 'overnight', 'international').optional(),
+  customs: customsSchema.optional(),
 }).or('origin_address_id', 'origin').or('destination_address_id', 'destination');
 
 const getRateHistorySchema = Joi.object({
