@@ -33,8 +33,7 @@ class BaseCarrierProxy {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
-      logger.info(`[${this.carrierName}Proxy] Making ${method} request to ${endpoint}`);
-
+      logger.info(`[${this.carrierName}Proxy] Making ${method} request to ${endpoint} - Data: ${JSON.stringify(data)}`);
       const response = await axios({
         method,
         url,
@@ -54,6 +53,7 @@ class BaseCarrierProxy {
 
       return response.data;
     } catch (error) {
+      console.log("🚀✳️ ~ BaseCarrierProxy ~ makeRequest ~ error:", error)
       return this.handleError(error, endpoint);
     }
   }
@@ -68,11 +68,8 @@ class BaseCarrierProxy {
       const status = error.response.status;
       const data = error.response.data;
 
-      logger.error(`[${this.carrierName}Proxy] API error`, {
-        status,
-        endpoint,
-        error: data,
-      });
+      // Log full error details including response data
+      logger.error(`[${this.carrierName}Proxy] API error - Status: ${status}, Endpoint: ${endpoint}, Error: ${JSON.stringify(data)}`);
 
       if (status === 401) {
         throw new Error(`${this.carrierName} authentication failed`);
