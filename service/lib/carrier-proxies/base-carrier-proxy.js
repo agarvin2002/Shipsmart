@@ -53,7 +53,6 @@ class BaseCarrierProxy {
 
       return response.data;
     } catch (error) {
-      console.log("🚀✳️ ~ BaseCarrierProxy ~ makeRequest ~ error:", error)
       return this.handleError(error, endpoint);
     }
   }
