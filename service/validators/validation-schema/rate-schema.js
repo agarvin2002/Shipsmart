@@ -39,6 +39,7 @@ const customsSchema = Joi.object({
 
 const getRatesSchema = Joi.object({
   // Support both address IDs and full address objects
+  shipment_id: Joi.string().optional(),
   origin_address_id: Joi.number().integer().positive().optional(),
   destination_address_id: Joi.number().integer().positive().optional(),
   origin: addressSchema.optional(),
