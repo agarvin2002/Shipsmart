@@ -1,15 +1,29 @@
 class UspsRateRequestBuilder {
 
   static buildRateRequest(shipmentData) {
-    const { origin, destination, package: pkg } = shipmentData;
+    const { origin, destination, package: pkg, packages } = shipmentData;
+
+    // Normalize to array: support both single package and multiple packages
+    const packageList = packages || (pkg ? [pkg] : []);
+
+    if (packageList.length === 0) {
+      throw new Error('At least one package is required');
+    }
 
     const isInternational = this.isInternationalShipment(origin, destination);
 
-    const dimensions = pkg.dimensions || {
-      length: pkg.length,
-      width: pkg.width,
-      height: pkg.height,
-    };
+    // For USPS multi-package: sum weights and use max dimensions
+    const totalWeight = packageList.reduce((sum, p) => sum + p.weight, 0);
+
+    // Get max dimensions across all packages
+    const maxDimensions = packageList.reduce((max, p) => {
+      const dims = p.dimensions || { length: p.length, width: p.width, height: p.height };
+      return {
+        length: Math.max(max.length, dims.length || 1),
+        width: Math.max(max.width, dims.width || 1),
+        height: Math.max(max.height, dims.height || 1),
+      };
+    }, { length: 1, width: 1, height: 1 });
 
     const mailingDate = new Date();
     mailingDate.setDate(mailingDate.getDate() + 1);
@@ -21,10 +35,10 @@ class UspsRateRequestBuilder {
         originZIPCode: origin.postal_code,
         foreignPostalCode: destination.postal_code,
         destinationCountryCode: destination.country,
-        weight: pkg.weight,
-        length: dimensions.length || 1,
-        width: dimensions.width || 1,
-        height: dimensions.height || 1,
+        weight: totalWeight,
+        length: maxDimensions.length,
+        width: maxDimensions.width,
+        height: maxDimensions.height,
         mailingDate: formattedDate,
       };
     }
@@ -33,10 +47,10 @@ class UspsRateRequestBuilder {
     return {
       originZIPCode: origin.postal_code,
       destinationZIPCode: destination.postal_code,
-      weight: pkg.weight,
-      length: dimensions.length || 1,
-      width: dimensions.width || 1,
-      height: dimensions.height || 1,
+      weight: totalWeight,
+      length: maxDimensions.length,
+      width: maxDimensions.width,
+      height: maxDimensions.height,
       mailingDate: formattedDate,
     };
   }

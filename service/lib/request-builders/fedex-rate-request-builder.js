@@ -1,9 +1,19 @@
 class FedexRateRequestBuilder {
 
   static buildRateRequest(shipmentData, credentials) {
-    const { origin, destination, package: pkg, customs } = shipmentData;
+    const { origin, destination, package: pkg, packages, customs } = shipmentData;
+
+    // Normalize to array: support both single package and multiple packages
+    const packageList = packages || (pkg ? [pkg] : []);
+
+    if (packageList.length === 0) {
+      throw new Error('At least one package is required');
+    }
 
     const isInternational = this.isInternationalShipment(origin, destination);
+
+    // Calculate total weight
+    const totalWeight = packageList.reduce((sum, p) => sum + p.weight, 0);
 
     const requestedShipment = {
       shipTimestamp: new Date().toISOString(),
@@ -11,17 +21,17 @@ class FedexRateRequestBuilder {
       recipient: this.buildAddress(destination),
       pickupType: 'CONTACT_FEDEX_TO_SCHEDULE',
       rateRequestType: ['ACCOUNT'],
-      requestedPackageLineItems: [
-        this.buildPackage(pkg, 1),
-      ],
+      requestedPackageLineItems: packageList.map((p, index) =>
+        this.buildPackage(p, index + 1)
+      ),
     };
 
     if (isInternational) {
-      requestedShipment.customsClearanceDetail = this.buildCustomsClearanceDetail(pkg, customs);
+      requestedShipment.customsClearanceDetail = this.buildCustomsClearanceDetail(packageList, customs);
     }
 
     // Add totalWeight as a simple number (required by FedEx API)
-    requestedShipment.totalWeight = pkg.weight;
+    requestedShipment.totalWeight = totalWeight;
 
     return {
       accountNumber: {
@@ -62,28 +72,31 @@ class FedexRateRequestBuilder {
   }
 
 
-  static buildCustomsClearanceDetail(pkg, customs) {
-    const weightUnit = (pkg.weight_unit === 'kg' || pkg.weight_unit === 'KG') ? 'KG' : 'LB';
+  static buildCustomsClearanceDetail(packageList, customs) {
+    // Build commodities array from all packages
+    const commodities = packageList.map((pkg) => {
+      const weightUnit = (pkg.weight_unit === 'kg' || pkg.weight_unit === 'KG') ? 'KG' : 'LB';
+
+      return {
+        description: customs?.commodity_description || pkg.description || 'Sample Goods',
+        quantity: customs?.quantity || 1,
+        quantityUnits: customs?.quantity_units || 'PCS',
+        weight: {
+          units: weightUnit,
+          value: pkg.weight,
+        },
+        customsValue: {
+          amount: customs?.customs_value || pkg.declared_value || 100.0,
+          currency: customs?.currency || 'USD',
+        },
+      };
+    });
 
     return {
       dutiesPayment: {
         paymentType: customs?.duties_payment_type || 'SENDER',
       },
-      commodities: [
-        {
-          description: customs?.commodity_description || pkg.description || 'Sample Goods',
-          quantity: customs?.quantity || 1,
-          quantityUnits: customs?.quantity_units || 'PCS',
-          weight: {
-            units: weightUnit,
-            value: pkg.weight,
-          },
-          customsValue: {
-            amount: customs?.customs_value || pkg.declared_value || 100.0,
-            currency: customs?.currency || 'USD',
-          },
-        },
-      ],
+      commodities,
     };
   }
 

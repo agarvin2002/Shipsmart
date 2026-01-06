@@ -53,10 +53,15 @@ class BaseCarrierRateService {
 
   
   logRateFetch(shipmentData) {
+    // Calculate total weight for logging (support both single and multi-package)
+    const packageList = shipmentData.packages || (shipmentData.package ? [shipmentData.package] : []);
+    const totalWeight = packageList.reduce((sum, p) => sum + (p?.weight || 0), 0);
+
     logger.info(`[${this.carrierName}RateService] Fetching rates`, {
       origin: shipmentData.origin?.postal_code,
       destination: shipmentData.destination?.postal_code,
-      weight: shipmentData.package?.weight,
+      weight: totalWeight,
+      package_count: packageList.length,
     });
   }
 

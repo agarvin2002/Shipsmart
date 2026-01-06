@@ -157,7 +157,7 @@ class CarrierRateOrchestrator {
   
   async enrichShipmentData(shipmentData) {
     try {
-      const { origin_address_id, destination_address_id, package: pkg } = shipmentData;
+      const { origin_address_id, destination_address_id, package: pkg, packages } = shipmentData;
 
       // Fetch full address details if only IDs provided
       if (origin_address_id && !shipmentData.origin) {
@@ -176,22 +176,24 @@ class CarrierRateOrchestrator {
         shipmentData.destination = destination.dataValues;
       }
 
-      // Normalize package dimensions - support both flat and nested formats
-      if (pkg) {
-        if (pkg.length && pkg.width && pkg.height && !pkg.dimensions) {
+      // Normalize package dimensions - support both single package and multiple packages
+      const packageList = packages || (pkg ? [pkg] : []);
+
+      packageList.forEach(p => {
+        if (p.length && p.width && p.height && !p.dimensions) {
           // Flat format: move dimensions into nested object
-          pkg.dimensions = {
-            length: pkg.length,
-            width: pkg.width,
-            height: pkg.height,
+          p.dimensions = {
+            length: p.length,
+            width: p.width,
+            height: p.height,
           };
-        } else if (pkg.dimensions && !pkg.length) {
+        } else if (p.dimensions && !p.length) {
           // Nested format: flatten dimensions
-          pkg.length = pkg.dimensions.length;
-          pkg.width = pkg.dimensions.width;
-          pkg.height = pkg.dimensions.height;
+          p.length = p.dimensions.length;
+          p.width = p.dimensions.width;
+          p.height = p.dimensions.height;
         }
-      }
+      });
 
       return shipmentData;
     } catch (error) {
@@ -204,13 +206,17 @@ class CarrierRateOrchestrator {
 
   
   buildCacheKey(shipmentData) {
-    const { origin_address_id, destination_address_id, origin, destination, package: pkg, service_type } = shipmentData;
+    const { origin_address_id, destination_address_id, origin, destination, package: pkg, packages, service_type } = shipmentData;
 
     // Use address IDs if available, otherwise use postal codes
     const originKey = origin_address_id || origin?.postal_code || 'unknown';
     const destKey = destination_address_id || destination?.postal_code || 'unknown';
 
-    const key = `${this.cacheKeyPrefix}:${originKey}:${destKey}:${pkg.weight}:${service_type || 'ground'}`;
+    // Calculate total weight for cache key (support both single and multi-package)
+    const packageList = packages || (pkg ? [pkg] : []);
+    const totalWeight = packageList.reduce((sum, p) => sum + (p?.weight || 0), 0);
+
+    const key = `${this.cacheKeyPrefix}:${originKey}:${destKey}:${totalWeight}:${packageList.length}:${service_type || 'ground'}`;
     return key;
   }
 
@@ -251,7 +257,11 @@ class CarrierRateOrchestrator {
   
   async saveRateHistory(userId, rates, shipmentData) {
     try {
-      const { origin, destination, package: pkg, service_type } = shipmentData;
+      const { origin, destination, package: pkg, packages, service_type } = shipmentData;
+
+      // Calculate total weight for history (support both single and multi-package)
+      const packageList = packages || (pkg ? [pkg] : []);
+      const totalWeight = packageList.reduce((sum, p) => sum + (p?.weight || 0), 0);
 
       const historyRecords = rates.map(rate => ({
         user_id: userId,
@@ -259,7 +269,7 @@ class CarrierRateOrchestrator {
         service_name: rate.service_name,
         rate_amount: rate.rate_amount,
         currency: rate.currency,
-        package_weight: pkg.weight,
+        package_weight: totalWeight,
         origin_zip: origin.postal_code,
         destination_zip: destination.postal_code,
         origin_country: origin.country || 'US',

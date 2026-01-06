@@ -44,10 +44,12 @@ const getRatesSchema = Joi.object({
   destination_address_id: Joi.number().integer().positive().optional(),
   origin: addressSchema.optional(),
   destination: addressSchema.optional(),
-  package: packageSchema.required(),
+  // Support both single package and multiple packages
+  package: packageSchema.optional(),
+  packages: Joi.array().items(packageSchema).min(1).max(10).optional(),
   service_type: Joi.string().valid('ground', 'express', 'overnight', 'international').optional(),
   customs: customsSchema.optional(),
-}).or('origin_address_id', 'origin').or('destination_address_id', 'destination');
+}).or('origin_address_id', 'origin').or('destination_address_id', 'destination').or('package', 'packages');
 
 const getRateHistorySchema = Joi.object({
   origin_zip: Joi.string().required(),
