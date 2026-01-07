@@ -112,3 +112,7 @@ dist
 .tern-port
 
 .DS_Store
+
+# Project-specific
+docs/
+sample-requests/
