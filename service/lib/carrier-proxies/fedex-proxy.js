@@ -15,11 +15,7 @@ class FedexProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Authenticate with FedEx OAuth 2.0
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<string>} Access token
-   */
+  
   async authenticate(credentials) {
     const { client_id, client_secret } = credentials;
 
@@ -48,12 +44,7 @@ class FedexProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Get shipping rates from FedEx
-   * @param {string} token - Access token
-   * @param {Object} rateRequest - Rate request payload
-   * @returns {Promise<Object>} Rate response
-   */
+  
   async getRates(token, rateRequest) {
     try {
       logger.info('[FedexProxy] Fetching rates');
@@ -79,19 +70,12 @@ class FedexProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Generate unique transaction ID for FedEx API
-   * @returns {string} Transaction ID
-   */
+  
   generateTransactionId() {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  /**
-   * Validate FedEx credentials
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<boolean>} Validation result
-   */
+  
   async validateCredentials(credentials) {
     try {
       await this.authenticate(credentials);

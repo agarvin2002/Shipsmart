@@ -5,10 +5,7 @@ const CarrierPresenter = require('../presenters/carrier-presenter');
 const ResponseFormatter = require('../helpers/response-formatter');
 
 class CarrierController {
-  /**
-   * Get all carriers
-   * GET /api/carriers
-   */
+  
   static async getCarriers(req, res, next) {
     try {
       // Validate query parameters
@@ -35,10 +32,7 @@ class CarrierController {
     }
   }
 
-  /**
-   * Get carrier by ID
-   * GET /api/carriers/:id
-   */
+  
   static async getCarrierById(req, res, next) {
     try {
       // Validate parameters
@@ -71,10 +65,7 @@ class CarrierController {
     }
   }
 
-  /**
-   * Get carrier services
-   * GET /api/carriers/:id/services
-   */
+  
   static async getCarrierServices(req, res, next) {
     try {
       // Validate parameters

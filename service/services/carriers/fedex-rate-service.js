@@ -11,11 +11,7 @@ class FedexRateService extends BaseCarrierRateService {
     this.carrierName = 'fedex';
   }
 
-  /**
-   * Get shipping rates from FedEx
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Array of rate objects
-   */
+  
   async getRates(shipmentData) {
     try {
       this.logRateFetch(shipmentData);
@@ -33,19 +29,15 @@ class FedexRateService extends BaseCarrierRateService {
       const response = await this.proxy.getRates(token, rateRequest);
 
       // 4. Transform and return rates
-      return this.transformRates(response);
+      return this.transformRates(response, shipmentData);
     } catch (error) {
       logger.error('[FedexRateService] Failed to get rates', { error: error.message });
       throw error;
     }
   }
 
-  /**
-   * Transform FedEx API response to standard format
-   * @param {Object} response - FedEx API response
-   * @returns {Array} Array of standardized rate objects
-   */
-  transformRates(response) {
+  
+  transformRates(response, shipmentData) {
     const rateReplyDetails = response.output?.rateReplyDetails || [];
 
     if (rateReplyDetails.length === 0) {
@@ -53,20 +45,25 @@ class FedexRateService extends BaseCarrierRateService {
       return [];
     }
 
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
     // Get service codes from user's selected services
     const selectedServiceCodes = this.services.map(s => s.service_code);
 
     logger.info('[FedexRateService] Filtering rates', {
       totalRates: rateReplyDetails.length,
       selectedServices: selectedServiceCodes.length,
-      selectedServiceCodes
+      selectedServiceCodes,
+      isInternational
     });
 
     const formattedRates = [];
 
     rateReplyDetails.forEach((rate) => {
-      // Filter: Only include rates for user's selected services
-      if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(rate.serviceType)) {
+      // Filter: For international shipments, show all available services
+      // For domestic shipments, only include rates for user's selected services
+      if (!isInternational && selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(rate.serviceType)) {
         logger.debug('[FedexRateService] Skipping non-selected service', {
           serviceType: rate.serviceType
         });
@@ -87,13 +84,17 @@ class FedexRateService extends BaseCarrierRateService {
 
       const totalCharge = ratedShipment.totalNetCharge || ratedShipment.totalBaseCharge;
 
+      // For international shipments, don't consider delivery dates
+      const transitDays = isInternational ? null : this.extractTransitDays(rate);
+      const deliveryDate = isInternational ? null : (rate.operationalDetail?.deliveryDate || rate.commit?.dateDetail?.dayFormat || null);
+
       formattedRates.push(this.formatRate({
         service_name: rate.serviceName || rate.serviceType,
         service_code: rate.serviceType,
         rate_amount: parseFloat(totalCharge),
         currency: ratedShipment.currency || 'USD',
-        delivery_days: rate.commit?.transitDays || this.estimateTransitDays(rate.serviceType),
-        estimated_delivery_date: rate.commit?.dateDetail?.date || null,
+        delivery_days: transitDays,
+        estimated_delivery_date: deliveryDate,
         raw_response: rate,
       }));
     });
@@ -106,11 +107,31 @@ class FedexRateService extends BaseCarrierRateService {
     return formattedRates;
   }
 
-  /**
-   * Estimate transit days based on service type (fallback)
-   * @param {string} serviceType - FedEx service type
-   * @returns {number} Estimated transit days
-   */
+
+  isInternationalShipment(origin, destination) {
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
+  }
+
+  
+  extractTransitDays(rate) {
+    if (rate.commit?.transitDays?.minimumTransitTime) {
+      const transitTimeMap = {
+        'ONE_DAY': 1,
+        'TWO_DAYS': 2,
+        'THREE_DAYS': 3,
+        'FOUR_DAYS': 4,
+        'FIVE_DAYS': 5,
+        'SIX_DAYS': 6,
+        'SEVEN_DAYS': 7,
+      };
+      return transitTimeMap[rate.commit.transitDays.minimumTransitTime] || null;
+    }
+
+    return this.estimateTransitDays(rate.serviceType);
+  }
+
   estimateTransitDays(serviceType) {
     const transitDaysMap = {
       STANDARD_OVERNIGHT: 1,
@@ -126,10 +147,7 @@ class FedexRateService extends BaseCarrierRateService {
     return transitDaysMap[serviceType] || null;
   }
 
-  /**
-   * Validate FedEx credentials
-   * @returns {Promise<Object>} Validation result
-   */
+  
   async validateCredentials() {
     try {
       logger.info('[FedexRateService] Validating credentials');

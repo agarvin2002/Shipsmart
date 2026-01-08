@@ -27,28 +27,17 @@ class BaseCarrierRateService {
     }
   }
 
-  /**
-   * Abstract method - must be implemented by child classes
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Array of rate objects
-   */
+  
   async getRates(shipmentData) {
     throw new Error(`getRates() must be implemented by ${this.constructor.name}`);
   }
 
-  /**
-   * Abstract method - must be implemented by child classes
-   * @returns {Promise<boolean>} Validation result
-   */
+  
   async validateCredentials() {
     throw new Error(`validateCredentials() must be implemented by ${this.constructor.name}`);
   }
 
-  /**
-   * Handle errors from carrier APIs
-   * @param {Error} error - Error object
-   * @returns {Object} Standardized error response
-   */
+  
   handleError(error) {
     logger.error(`[${this.carrierName}RateService] Error:`, {
       message: error.message,
@@ -62,23 +51,21 @@ class BaseCarrierRateService {
     };
   }
 
-  /**
-   * Log rate fetch attempt
-   * @param {Object} shipmentData - Shipment details
-   */
+  
   logRateFetch(shipmentData) {
+    // Calculate total weight for logging (support both single and multi-package)
+    const packageList = shipmentData.packages || (shipmentData.package ? [shipmentData.package] : []);
+    const totalWeight = packageList.reduce((sum, p) => sum + (p?.weight || 0), 0);
+
     logger.info(`[${this.carrierName}RateService] Fetching rates`, {
       origin: shipmentData.origin?.postal_code,
       destination: shipmentData.destination?.postal_code,
-      weight: shipmentData.package?.weight,
+      weight: totalWeight,
+      package_count: packageList.length,
     });
   }
 
-  /**
-   * Format rate object to standard structure
-   * @param {Object} rawRate - Raw rate data from carrier
-   * @returns {Object} Standardized rate object
-   */
+  
   formatRate(rawRate) {
     return {
       carrier: this.carrierName,

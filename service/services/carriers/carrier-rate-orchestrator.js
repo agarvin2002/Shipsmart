@@ -9,13 +9,7 @@ class CarrierRateOrchestrator {
     this.defaultCacheTTL = 300; // 5 minutes
   }
 
-  /**
-   * Get rates for a shipment from all available carriers
-   * @param {number} userId - User ID
-   * @param {Object} shipmentData - Shipment details
-   * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Rate comparison result
-   */
+  
   async getRatesForShipment(userId, shipmentData, options = {}) {
     try {
       logger.info('[CarrierRateOrchestrator] Getting rates for shipment', { userId });
@@ -46,7 +40,7 @@ class CarrierRateOrchestrator {
       const rates = await this.fetchRatesFromCarriers(carriers, enrichedData);
 
       // 6. Sort and analyze rates
-      const rateComparison = this.analyzeRates(rates);
+      const rateComparison = this.analyzeRates(rates, enrichedData);
 
       // 7. Cache the results
       await this.cacheRates(cacheKey, rateComparison);
@@ -72,12 +66,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Fetch rates from multiple carriers in parallel
-   * @param {Array} carriers - Array of carrier credentials
-   * @param {Object} shipmentData - Enriched shipment data
-   * @returns {Promise<Array>} Array of rates
-   */
+  
   async fetchRatesFromCarriers(carriers, shipmentData) {
     logger.info('[CarrierRateOrchestrator] Fetching rates from carriers', {
       carrierCount: carriers.length,
@@ -120,12 +109,8 @@ class CarrierRateOrchestrator {
     return rates;
   }
 
-  /**
-   * Analyze rates and provide comparison
-   * @param {Array} rates - Array of rate objects
-   * @returns {Object} Rate comparison analysis
-   */
-  analyzeRates(rates) {
+  
+  analyzeRates(rates, shipmentData = {}) {
     if (rates.length === 0) {
       return {
         total_carriers: 0,
@@ -136,16 +121,19 @@ class CarrierRateOrchestrator {
       };
     }
 
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
     // Sort by price (cheapest first)
     const sortedByPrice = [...rates].sort((a, b) => a.rate_amount - b.rate_amount);
 
-    // Sort by delivery time (fastest first)
+    // Sort by delivery time (fastest first) - only for domestic shipments
     const sortedBySpeed = [...rates]
       .filter(r => r.delivery_days !== null)
       .sort((a, b) => a.delivery_days - b.delivery_days);
 
     const cheapest = sortedByPrice[0];
-    const fastest = sortedBySpeed[0] || sortedByPrice[0];
+    const fastest = isInternational ? null : (sortedBySpeed[0] || null);
     const mostExpensive = sortedByPrice[sortedByPrice.length - 1];
 
     return {
@@ -158,14 +146,18 @@ class CarrierRateOrchestrator {
     };
   }
 
-  /**
-   * Enrich shipment data with full address details
-   * @param {Object} shipmentData - Shipment data with address IDs
-   * @returns {Promise<Object>} Enriched shipment data
-   */
+
+  isInternationalShipment(origin, destination) {
+    if (!origin || !destination) return false;
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
+  }
+
+  
   async enrichShipmentData(shipmentData) {
     try {
-      const { origin_address_id, destination_address_id, package: pkg } = shipmentData;
+      const { origin_address_id, destination_address_id, package: pkg, packages } = shipmentData;
 
       // Fetch full address details if only IDs provided
       if (origin_address_id && !shipmentData.origin) {
@@ -184,22 +176,24 @@ class CarrierRateOrchestrator {
         shipmentData.destination = destination.dataValues;
       }
 
-      // Normalize package dimensions - support both flat and nested formats
-      if (pkg) {
-        if (pkg.length && pkg.width && pkg.height && !pkg.dimensions) {
+      // Normalize package dimensions - support both single package and multiple packages
+      const packageList = packages || (pkg ? [pkg] : []);
+
+      packageList.forEach(p => {
+        if (p.length && p.width && p.height && !p.dimensions) {
           // Flat format: move dimensions into nested object
-          pkg.dimensions = {
-            length: pkg.length,
-            width: pkg.width,
-            height: pkg.height,
+          p.dimensions = {
+            length: p.length,
+            width: p.width,
+            height: p.height,
           };
-        } else if (pkg.dimensions && !pkg.length) {
+        } else if (p.dimensions && !p.length) {
           // Nested format: flatten dimensions
-          pkg.length = pkg.dimensions.length;
-          pkg.width = pkg.dimensions.width;
-          pkg.height = pkg.dimensions.height;
+          p.length = p.dimensions.length;
+          p.width = p.dimensions.width;
+          p.height = p.dimensions.height;
         }
-      }
+      });
 
       return shipmentData;
     } catch (error) {
@@ -210,27 +204,23 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Build cache key for rate request
-   * @param {Object} shipmentData - Shipment data
-   * @returns {string} Cache key
-   */
+  
   buildCacheKey(shipmentData) {
-    const { origin_address_id, destination_address_id, origin, destination, package: pkg, service_type } = shipmentData;
+    const { origin_address_id, destination_address_id, origin, destination, package: pkg, packages, service_type } = shipmentData;
 
     // Use address IDs if available, otherwise use postal codes
     const originKey = origin_address_id || origin?.postal_code || 'unknown';
     const destKey = destination_address_id || destination?.postal_code || 'unknown';
 
-    const key = `${this.cacheKeyPrefix}:${originKey}:${destKey}:${pkg.weight}:${service_type || 'ground'}`;
+    // Calculate total weight for cache key (support both single and multi-package)
+    const packageList = packages || (pkg ? [pkg] : []);
+    const totalWeight = packageList.reduce((sum, p) => sum + (p?.weight || 0), 0);
+
+    const key = `${this.cacheKeyPrefix}:${originKey}:${destKey}:${totalWeight}:${packageList.length}:${service_type || 'ground'}`;
     return key;
   }
 
-  /**
-   * Get cached rates
-   * @param {string} cacheKey - Cache key
-   * @returns {Promise<Object|null>} Cached rates or null
-   */
+  
   async getCachedRates(cacheKey) {
     try {
       const cached = await RedisWrapper.get(cacheKey);
@@ -247,12 +237,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Cache rates
-   * @param {string} cacheKey - Cache key
-   * @param {Object} rateComparison - Rate comparison data
-   * @returns {Promise<void>}
-   */
+  
   async cacheRates(cacheKey, rateComparison) {
     try {
       await RedisWrapper.setWithExpiry(
@@ -269,16 +254,14 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Save rates to history for anomaly detection
-   * @param {number} userId - User ID
-   * @param {Array} rates - Array of rates
-   * @param {Object} shipmentData - Shipment data
-   * @returns {Promise<void>}
-   */
+  
   async saveRateHistory(userId, rates, shipmentData) {
     try {
-      const { origin, destination, package: pkg, service_type } = shipmentData;
+      const { origin, destination, package: pkg, packages, service_type } = shipmentData;
+
+      // Calculate total weight for history (support both single and multi-package)
+      const packageList = packages || (pkg ? [pkg] : []);
+      const totalWeight = packageList.reduce((sum, p) => sum + (p?.weight || 0), 0);
 
       const historyRecords = rates.map(rate => ({
         user_id: userId,
@@ -286,7 +269,7 @@ class CarrierRateOrchestrator {
         service_name: rate.service_name,
         rate_amount: rate.rate_amount,
         currency: rate.currency,
-        package_weight: pkg.weight,
+        package_weight: totalWeight,
         origin_zip: origin.postal_code,
         destination_zip: destination.postal_code,
         origin_country: origin.country || 'US',
@@ -309,11 +292,7 @@ class CarrierRateOrchestrator {
     }
   }
 
-  /**
-   * Invalidate cache for a specific route
-   * @param {Object} shipmentData - Shipment data
-   * @returns {Promise<void>}
-   */
+  
   async invalidateCache(shipmentData) {
     try {
       const cacheKey = this.buildCacheKey(shipmentData);

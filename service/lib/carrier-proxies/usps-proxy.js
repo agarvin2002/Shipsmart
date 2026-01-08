@@ -15,11 +15,7 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Authenticate with USPS OAuth 2.0
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<string>} Access token
-   */
+  
   async authenticate(credentials) {
     const { client_id, client_secret } = credentials;
 
@@ -46,17 +42,16 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Get shipping rates from USPS
-   * @param {string} token - Access token
-   * @param {Object} rateRequest - Rate request payload
-   * @returns {Promise<Object>} Rate response
-   */
-  async getRates(token, rateRequest) {
-    try {
-      logger.info('[UspsProxy] Fetching rates');
 
-      const response = await this.makeRequest('/prices/v3/base-rates/search', {
+  async getRates(token, rateRequest, isInternational = false) {
+    try {
+      const endpoint = isInternational
+        ? '/international-prices/v3/base-rates-list/search'
+        : '/prices/v3/base-rates-list/search';
+
+      logger.info('[UspsProxy] Fetching rates', { endpoint, isInternational });
+
+      const response = await this.makeRequest(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -66,7 +61,7 @@ class UspsProxy extends BaseCarrierProxy {
       });
 
       logger.info('[UspsProxy] Rates fetched successfully', {
-        rateCount: response.rates?.length || 0,
+        rateCount: response.rateOptions?.length || 0,
       });
 
       return response;
@@ -76,11 +71,34 @@ class UspsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Validate USPS credentials
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<boolean>} Validation result
-   */
+  async getTransitTime(token, transitTimeRequest) {
+    try {
+      logger.info('[UspsProxy] Fetching transit times');
+
+      const { originZIPCode, destinationZIPCode } = transitTimeRequest;
+
+      const response = await this.makeRequest(
+        `/service-standards/v3/estimates?originZIPCode=${originZIPCode}&destinationZIPCode=${destinationZIPCode}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      logger.info('[UspsProxy] Transit times fetched successfully', {
+        serviceCount: Array.isArray(response) ? response.length : 0,
+      });
+
+      return response;
+    } catch (error) {
+      logger.error('[UspsProxy] Transit time fetch failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  
   async validateCredentials(credentials) {
     try {
       await this.authenticate(credentials);

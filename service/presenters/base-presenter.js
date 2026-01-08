@@ -29,7 +29,20 @@ class BasePresenter {
 
   static formatTimestamp(date) {
     if (!date) return null;
-    return new Date(date).toISOString();
+
+    if (typeof date === 'string' && /^\d{8}$/.test(date)) {
+      const year = date.substring(0, 4);
+      const month = date.substring(4, 6);
+      const day = date.substring(6, 8);
+      return new Date(`${year}-${month}-${day}`).toISOString();
+    }
+
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      return null;
+    }
+
+    return parsedDate.toISOString();
   }
 
   static present(data) {

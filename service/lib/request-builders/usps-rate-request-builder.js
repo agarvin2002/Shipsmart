@@ -1,84 +1,93 @@
 class UspsRateRequestBuilder {
-  /**
-   * Build USPS rate request payload for REST API v3
-   * @param {Object} shipmentData - Shipment details
-   * @param {Object} credentials - USPS credentials
-   * @returns {Object} USPS API request payload
-   */
-  static buildRateRequest(shipmentData, credentials) {
-    const { origin, destination, package: pkg, service_type } = shipmentData;
+
+  static buildRateRequest(shipmentData) {
+    const { origin, destination, package: pkg, packages } = shipmentData;
+
+    // Normalize to array: support both single package and multiple packages
+    const packageList = packages || (pkg ? [pkg] : []);
+
+    if (packageList.length === 0) {
+      throw new Error('At least one package is required');
+    }
+
+    const isInternational = this.isInternationalShipment(origin, destination);
+
+    // For USPS multi-package: sum weights and use max dimensions
+    const totalWeight = packageList.reduce((sum, p) => sum + p.weight, 0);
+
+    // Get max dimensions across all packages
+    const maxDimensions = packageList.reduce((max, p) => {
+      const dims = p.dimensions || { length: p.length, width: p.width, height: p.height };
+      return {
+        length: Math.max(max.length, dims.length || 1),
+        width: Math.max(max.width, dims.width || 1),
+        height: Math.max(max.height, dims.height || 1),
+      };
+    }, { length: 1, width: 1, height: 1 });
 
     const mailingDate = new Date();
-    mailingDate.setDate(mailingDate.getDate() + 1); // Tomorrow's date
+    mailingDate.setDate(mailingDate.getDate() + 1);
     const formattedDate = mailingDate.toISOString().split('T')[0];
 
+    // International shipments use different payload structure
+    if (isInternational) {
+      return {
+        originZIPCode: origin.postal_code,
+        foreignPostalCode: destination.postal_code,
+        destinationCountryCode: destination.country,
+        weight: totalWeight,
+        length: maxDimensions.length,
+        width: maxDimensions.width,
+        height: maxDimensions.height,
+        mailingDate: formattedDate,
+      };
+    }
+
+    // Domestic shipments
     return {
       originZIPCode: origin.postal_code,
       destinationZIPCode: destination.postal_code,
-      weight: pkg.weight,
-      length: pkg.dimensions.length,
-      width: pkg.dimensions.width,
-      height: pkg.dimensions.height,
-      mailClass: this.mapServiceType(service_type),
-      processingCategory: this.getProcessingCategory(pkg),
-      rateIndicator: 'SP', // Single Piece
-      destinationEntryFacilityType: 'NONE',
-      priceType: 'COMMERCIAL',
+      weight: totalWeight,
+      length: maxDimensions.length,
+      width: maxDimensions.width,
+      height: maxDimensions.height,
       mailingDate: formattedDate,
     };
   }
 
-  /**
-   * Get processing category based on package dimensions
-   * @param {Object} pkg - Package data
-   * @returns {string} Processing category
-   */
-  static getProcessingCategory(pkg) {
-    const { length, width, height } = pkg.dimensions;
-    const girth = 2 * (width + height);
-    const lengthPlusGirth = length + girth;
-
-    // USPS considers a package nonstandard if length + girth > 84 inches
-    if (lengthPlusGirth > 84) {
-      return 'NONSTANDARD';
-    }
-
-    // Check if it's machinable (under 27 inches length, under 17 inches width/height)
-    if (length <= 27 && width <= 17 && height <= 17) {
-      return 'MACHINABLE';
-    }
-
-    return 'NONSTANDARD';
+  static isInternationalShipment(origin, destination) {
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
   }
 
-  /**
-   * Map service type to USPS mail class
-   * @param {string} serviceType - Generic service type
-   * @returns {string} USPS mail class
-   */
-  static mapServiceType(serviceType) {
-    const mapping = {
-      ground: 'PRIORITY_MAIL',
-      express: 'PRIORITY_MAIL_EXPRESS',
-      overnight: 'PRIORITY_MAIL_EXPRESS',
-      international: 'PRIORITY_MAIL_INTERNATIONAL',
+  static buildTransitTimeRequest(shipmentData) {
+    const { origin, destination } = shipmentData;
+
+    return {
+      originZIPCode: origin.postal_code,
+      destinationZIPCode: destination.postal_code,
     };
-
-    return mapping[serviceType] || 'PRIORITY_MAIL';
   }
 
-  /**
-   * Get service name from mail class
-   * @param {string} mailClass - USPS mail class
-   * @returns {string} Service name
-   */
+
   static getServiceName(mailClass) {
     const serviceNames = {
       'PRIORITY_MAIL': 'USPS Priority Mail',
       'PRIORITY_MAIL_EXPRESS': 'USPS Priority Mail Express',
       'PRIORITY_MAIL_INTERNATIONAL': 'USPS Priority Mail International',
-      'FIRST_CLASS': 'USPS First-Class Mail',
+      'PRIORITY_MAIL_EXPRESS_INTERNATIONAL': 'USPS Priority Mail Express International',
+      'USPS_GROUND_ADVANTAGE': 'USPS Ground Advantage',
+      'FIRST_CLASS_MAIL_LETTERS': 'USPS First-Class Mail Letters',
+      'FIRST_CLASS_MAIL_FLATS': 'USPS First-Class Mail Flats',
+      'FIRST-CLASS_MAIL_LETTERS': 'USPS First-Class Mail Letters',
+      'FIRST-CLASS_MAIL_FLATS': 'USPS First-Class Mail Flats',
+      'FIRST-CLASS_MAIL_CARDS': 'USPS First-Class Mail Cards',
       'PARCEL_SELECT': 'USPS Parcel Select',
+      'MEDIA_MAIL': 'USPS Media Mail',
+      'LIBRARY_MAIL': 'USPS Library Mail',
+      'BOUND_PRINTED_MATTER': 'USPS Bound Printed Matter',
+      'PRIORITY_MAIL_EXPRESS_FOR_LIVES': 'USPS Priority Mail Express for Lives',
     };
 
     return serviceNames[mailClass] || mailClass;

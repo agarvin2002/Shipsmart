@@ -3,10 +3,7 @@ const RateHistoryRepository = require('../../repositories/rate-history-repositor
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class RateHistoryConsumer {
-  /**
-   * Save rate history to database
-   * @param {Object} job - Bull job object
-   */
+  
   static async perform(job) {
     const { userId, rates, shipmentData, requestId } = job.data;
 

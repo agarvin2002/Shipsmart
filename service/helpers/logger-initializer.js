@@ -1,22 +1,6 @@
 /* global logger */
 const cls = require('cls-hooked');
 
-/**
- * Logger Initializer
- *
- * Wraps global.logger methods to automatically inject request ID from CLS namespace.
- * This allows all existing code using global.logger to automatically get request IDs
- * without any code changes.
- *
- * Usage:
- *   const initializeLogger = require('./helpers/logger-initializer');
- *   initializeLogger(); // Call once at app startup after logger is defined
- */
-
-/**
- * Get namespace for request ID tracking
- * Returns null if namespace doesn't exist yet
- */
 function getNamespace() {
   try {
     return cls.getNamespace('shipsmart_sequel_trans');
@@ -25,11 +9,6 @@ function getNamespace() {
   }
 }
 
-/**
- * Format message with request ID prefix if available
- * @param {string} message - The log message
- * @returns {string} - Message with [requestId] prefix if available
- */
 function formatMessage(message) {
   const namespace = getNamespace();
   const requestId = namespace && namespace.get('requestId');
@@ -39,10 +18,6 @@ function formatMessage(message) {
   return message;
 }
 
-/**
- * Initialize logger wrapper
- * Wraps global.logger methods to auto-inject request ID from namespace
- */
 function initializeLogger() {
   // Store original logger methods
   const originalInfo = logger.info.bind(logger);

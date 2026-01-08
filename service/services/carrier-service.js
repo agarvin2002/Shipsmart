@@ -6,11 +6,7 @@ class CarrierService {
     this.carrierRepository = new CarrierRepository();
   }
 
-  /**
-   * Get all carriers
-   * @param {Object} options - Query options
-   * @returns {Promise<Array>} Array of carriers
-   */
+  
   async getCarriers(options = {}) {
     try {
       const carriers = await this.carrierRepository.findAll(options);
@@ -21,11 +17,7 @@ class CarrierService {
     }
   }
 
-  /**
-   * Get carrier by ID
-   * @param {number} id - Carrier ID
-   * @returns {Promise<Object>} Carrier or error object
-   */
+  
   async getCarrierById(id) {
     try {
       const carrier = await this.carrierRepository.findById(id);
@@ -41,11 +33,7 @@ class CarrierService {
     }
   }
 
-  /**
-   * Get carrier by code
-   * @param {string} code - Carrier code
-   * @returns {Promise<Object>} Carrier or error object
-   */
+  
   async getCarrierByCode(code) {
     try {
       const carrier = await this.carrierRepository.findByCode(code);
@@ -61,12 +49,7 @@ class CarrierService {
     }
   }
 
-  /**
-   * Get carrier services
-   * @param {number} carrierId - Carrier ID
-   * @param {Object} options - Query options
-   * @returns {Promise<Object>} Object with carrier and services or error
-   */
+  
   async getCarrierServices(carrierId, options = {}) {
     try {
       // First check if carrier exists
@@ -90,10 +73,7 @@ class CarrierService {
     }
   }
 
-  /**
-   * Get count of active carriers
-   * @returns {Promise<number>} Count of active carriers
-   */
+  
   async getActiveCarriersCount() {
     try {
       return await this.carrierRepository.countActive();

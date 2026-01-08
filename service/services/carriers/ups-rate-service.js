@@ -11,11 +11,7 @@ class UpsRateService extends BaseCarrierRateService {
     this.carrierName = 'ups';
   }
 
-  /**
-   * Get shipping rates from UPS
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Array of rate objects
-   */
+  
   async getRates(shipmentData) {
     try {
       this.logRateFetch(shipmentData);
@@ -33,19 +29,15 @@ class UpsRateService extends BaseCarrierRateService {
       const response = await this.proxy.getRates(token, rateRequest);
 
       // 4. Transform and return rates
-      return this.transformRates(response);
+      return this.transformRates(response, shipmentData);
     } catch (error) {
       logger.error('[UpsRateService] Failed to get rates', { error: error.message });
       throw error;
     }
   }
 
-  /**
-   * Transform UPS API response to standard format
-   * @param {Object} response - UPS API response
-   * @returns {Array} Array of standardized rate objects
-   */
-  transformRates(response) {
+
+  transformRates(response, shipmentData) {
     // UPS can return RatedShipment as a single object or an array
     let ratedShipments = response.RateResponse?.RatedShipment || [];
 
@@ -59,20 +51,25 @@ class UpsRateService extends BaseCarrierRateService {
       return [];
     }
 
+    // Check if international shipment
+    const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
+
     // Get service codes from user's selected services
     const selectedServiceCodes = this.services.map(s => s.service_code);
 
     logger.info('[UpsRateService] Filtering rates', {
       totalRates: ratedShipments.length,
       selectedServices: selectedServiceCodes.length,
-      selectedServiceCodes
+      selectedServiceCodes,
+      isInternational
     });
 
     const formattedRates = ratedShipments
       .filter((rate) => {
         const serviceCode = rate.Service?.Code;
-        // Filter: Only include rates for user's selected services
-        if (selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
+        // Filter: For international shipments, show all available services
+        // For domestic shipments, only include rates for user's selected services
+        if (!isInternational && selectedServiceCodes.length > 0 && !selectedServiceCodes.includes(serviceCode)) {
           logger.debug('[UpsRateService] Skipping non-selected service', {
             serviceCode
           });
@@ -85,13 +82,16 @@ class UpsRateService extends BaseCarrierRateService {
         const negotiatedRate = rate.NegotiatedRateCharges?.TotalCharge;
         const totalCharges = negotiatedRate || rate.TotalCharges;
 
+        // For international shipments, don't consider delivery dates
+        const transitInfo = isInternational ? { deliveryDays: null, estimatedDeliveryDate: null } : this.extractTransitTime(rate);
+
         return this.formatRate({
           service_name: this.getServiceName(rate.Service?.Code),
           service_code: rate.Service?.Code,
           rate_amount: parseFloat(totalCharges?.MonetaryValue || 0),
           currency: totalCharges?.CurrencyCode || 'USD',
-          delivery_days: rate.GuaranteedDelivery?.BusinessDaysInTransit || this.estimateTransitDays(rate.Service?.Code),
-          estimated_delivery_date: rate.GuaranteedDelivery?.DeliveryByTime || null,
+          delivery_days: transitInfo.deliveryDays,
+          estimated_delivery_date: transitInfo.estimatedDeliveryDate,
           raw_response: rate,
         });
       });
@@ -104,11 +104,38 @@ class UpsRateService extends BaseCarrierRateService {
     return formattedRates;
   }
 
-  /**
-   * Get UPS service name from code
-   * @param {string} code - UPS service code
-   * @returns {string} Service name
-   */
+  extractTransitTime(rate) {
+    let deliveryDays = null;
+    let estimatedDeliveryDate = null;
+
+    if (rate.TimeInTransit?.ServiceSummary?.EstimatedArrival) {
+      const estimatedArrival = rate.TimeInTransit.ServiceSummary.EstimatedArrival;
+      deliveryDays = estimatedArrival.BusinessDaysInTransit
+        ? parseInt(estimatedArrival.BusinessDaysInTransit)
+        : null;
+      estimatedDeliveryDate = estimatedArrival.Date || estimatedArrival.Arrival?.Date || null;
+    } else if (rate.GuaranteedDelivery) {
+      deliveryDays = rate.GuaranteedDelivery.BusinessDaysInTransit
+        ? parseInt(rate.GuaranteedDelivery.BusinessDaysInTransit)
+        : null;
+      estimatedDeliveryDate = rate.GuaranteedDelivery.DeliveryByTime || null;
+    }
+
+    if (!deliveryDays) {
+      deliveryDays = this.estimateTransitDays(rate.Service?.Code);
+    }
+
+    return { deliveryDays, estimatedDeliveryDate };
+  }
+
+
+  isInternationalShipment(origin, destination) {
+    const originCountry = origin.country || 'US';
+    const destinationCountry = destination.country || 'US';
+    return originCountry !== destinationCountry;
+  }
+
+
   getServiceName(code) {
     const serviceNames = {
       '01': 'UPS Next Day Air',
@@ -127,11 +154,7 @@ class UpsRateService extends BaseCarrierRateService {
     return serviceNames[code] || `UPS Service ${code}`;
   }
 
-  /**
-   * Estimate transit days based on service code (fallback)
-   * @param {string} code - UPS service code
-   * @returns {number} Estimated transit days
-   */
+  
   estimateTransitDays(code) {
     const transitDaysMap = {
       '01': 1, // Next Day Air
@@ -148,10 +171,7 @@ class UpsRateService extends BaseCarrierRateService {
     return transitDaysMap[code] || null;
   }
 
-  /**
-   * Validate UPS credentials
-   * @returns {Promise<Object>} Validation result
-   */
+  
   async validateCredentials() {
     try {
       logger.info('[UpsRateService] Validating credentials');

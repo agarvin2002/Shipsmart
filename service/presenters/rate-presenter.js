@@ -1,11 +1,7 @@
 const BasePresenter = require('./base-presenter');
 
 class RatePresenter extends BasePresenter {
-  /**
-   * Present a single rate
-   * @param {Object} rate - Rate object
-   * @returns {Object} Formatted rate
-   */
+  
   static present(rate) {
     if (!rate) return null;
 
@@ -30,11 +26,7 @@ class RatePresenter extends BasePresenter {
     };
   }
 
-  /**
-   * Present rate comparison with analysis
-   * @param {Object} rateComparison - Rate comparison object from orchestrator
-   * @returns {Object} Formatted comparison
-   */
+  
   static presentComparison(rateComparison) {
     const { total_carriers, total_rates, cheapest, fastest, all_rates, potential_savings, cached } = rateComparison;
 
@@ -53,11 +45,7 @@ class RatePresenter extends BasePresenter {
     };
   }
 
-  /**
-   * Present minimal rate info (for lists)
-   * @param {Object} rate - Rate object
-   * @returns {Object} Minimal rate info
-   */
+  
   static presentMinimal(rate) {
     if (!rate) return null;
 
@@ -69,11 +57,7 @@ class RatePresenter extends BasePresenter {
     };
   }
 
-  /**
-   * Present rate history
-   * @param {Array} historyRecords - Array of rate history records
-   * @returns {Array} Formatted history
-   */
+  
   static presentHistory(historyRecords) {
     return historyRecords.map(record => ({
       carrier: record.carrier,

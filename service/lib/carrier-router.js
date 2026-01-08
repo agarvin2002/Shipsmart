@@ -5,12 +5,7 @@ const UspsRateService = require('../services/carriers/usps-rate-service');
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class CarrierRouter {
-  /**
-   * Get available carriers for a user with their config and selected services
-   * @param {number} userId - User ID
-   * @param {Object} shipmentData - Shipment details (optional, for filtering)
-   * @returns {Promise<Array>} Array of carrier credentials with config and services
-   */
+  
   static async getAvailableCarriers(userId, shipmentData = null) {
     try {
       logger.info('[CarrierRouter] Getting available carriers', { userId });
@@ -98,12 +93,7 @@ class CarrierRouter {
     }
   }
 
-  /**
-   * Check if carrier supports the route
-   * @param {string} carrier - Carrier name
-   * @param {Object} shipmentData - Shipment details
-   * @returns {boolean} Whether carrier supports this route
-   */
+  
   static supportsRoute(carrier, shipmentData) {
     const { origin, destination, service_type } = shipmentData;
 
@@ -128,12 +118,7 @@ class CarrierRouter {
     return true; // Default: allow all carriers
   }
 
-  /**
-   * Get carrier service instance
-   * @param {string} carrierName - Carrier name (fedex, ups, usps, dhl)
-   * @param {Object} credentials - Carrier credentials
-   * @returns {Object} Carrier service instance
-   */
+  
   static getCarrierService(carrierName, credentials) {
     const serviceMap = {
       fedex: FedexRateService,
@@ -151,13 +136,7 @@ class CarrierRouter {
     return new ServiceClass(credentials);
   }
 
-  /**
-   * Route request to appropriate carrier service
-   * @param {string} carrierName - Carrier name
-   * @param {Object} credentials - Carrier credentials
-   * @param {Object} shipmentData - Shipment details
-   * @returns {Promise<Array>} Rates from carrier
-   */
+  
   static async routeRateRequest(carrierName, credentials, shipmentData) {
     try {
       logger.info('[CarrierRouter] Routing rate request', { carrier: carrierName });

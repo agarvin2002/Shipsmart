@@ -15,11 +15,7 @@ class UpsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Authenticate with UPS OAuth 2.0
-   * @param {Object} credentials - { client_id, client_secret, merchant_id }
-   * @returns {Promise<string>} Access token
-   */
+  
   async authenticate(credentials) {
     const { client_id, client_secret, merchant_id, account_number, account_numbers } = credentials;
 
@@ -52,17 +48,12 @@ class UpsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Get shipping rates from UPS
-   * @param {string} token - Access token
-   * @param {Object} rateRequest - Rate request payload
-   * @returns {Promise<Object>} Rate response
-   */
+  
   async getRates(token, rateRequest) {
     try {
       logger.info('[UpsProxy] Fetching rates');
 
-      const response = await this.makeRequest('/api/rating/v2/Rate', {
+      const response = await this.makeRequest('/api/rating/v2/Shoptimeintransit', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -86,19 +77,12 @@ class UpsProxy extends BaseCarrierProxy {
     }
   }
 
-  /**
-   * Generate unique transaction ID for UPS API
-   * @returns {string} Transaction ID
-   */
+  
   generateTransactionId() {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  /**
-   * Validate UPS credentials
-   * @param {Object} credentials - { client_id, client_secret }
-   * @returns {Promise<boolean>} Validation result
-   */
+  
   async validateCredentials(credentials) {
     try {
       await this.authenticate(credentials);
