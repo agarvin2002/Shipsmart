@@ -1,37 +1,59 @@
-## Description
-**What does this PR do?**
-<!-- Provide a clear description of what this PR accomplishes -->
+## 📝 Description
+
+<!-- Clear, concise description of what this PR does -->
 
 
-**Why is this change needed?**
-<!-- Explain the problem this PR solves or the feature it adds -->
+## 🏷️ Type
+
+- [ ] `feat` - New feature
+- [ ] `fix` - Bug fix
+- [ ] `refactor` - Code restructuring (no functional change)
+- [ ] `docs` - Documentation only
+- [ ] `chore` - Maintenance (dependencies, config)
+- [ ] `perf` - Performance improvement
+- [ ] `security` - Security enhancement/fix
+
+## 🔗 Related Issue
+
+<!-- Closes #123 -->
 
 
-## Type of Change
-<!-- Check ONE that applies -->
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Refactoring
-- [ ] Documentation update
+## 🧪 Testing
 
-## Related Issue(s)
-<!-- Link any related issues: Fixes #123, Closes #456 -->
+**How tested:**
+<!-- Manual testing, specific scenarios tested, etc. -->
 
 
-## Testing Performed
-**How was this tested?**
-<!-- Describe the testing you did -->
+**Testing checklist:**
+- [ ] Tested locally
+- [ ] No console.log or debug code
+- [ ] All lint checks pass (`yarn lint`)
 
+## ✅ Pre-merge Checklist
 
-**Test checklist:**
-- [ ] Unit tests added/updated
-- [ ] All tests passing
-- [ ] Manually tested
+**Architecture & Code Quality:**
+- [ ] Follows 5-layer architecture (Routes → Controllers → Services → Repositories → Models)
+- [ ] No layer skipping (e.g., Controller doesn't call Repository directly)
+- [ ] Context object `{ currentUser, requestId }` passed through layers
+- [ ] All database queries filter by `user_id` (multi-tenancy)
+- [ ] Code follows naming conventions (see [CLAUDE.md](.claude/CLAUDE.md))
 
-## Checklist
-- [ ] Code reviewed by myself
-- [ ] Code follows project conventions
-- [ ] No console.log or debug code left
-- [ ] Documentation updated if needed
+**Security:**
+- [ ] No sensitive data logged (passwords, tokens, API keys)
+- [ ] Input validation with Joi schemas
+- [ ] Proper error handling
+
+**General:**
+- [ ] Commit messages follow semantic format (`type: description`)
+- [ ] No breaking changes (or clearly documented if unavoidable)
+- [ ] Self-reviewed code
 - [ ] Ready for review
+
+## 📸 Screenshots (if applicable)
+
+<!-- Add screenshots for UI changes -->
+
+
+## 📚 Additional Context
+
+<!-- Any additional information, decisions made, trade-offs, etc. -->
