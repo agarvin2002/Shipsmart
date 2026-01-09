@@ -1,0 +1,26 @@
+{
+  "mcpServers": {},
+  "model": "claude-sonnet-4-5-20250929",
+  "alwaysThinkingEnabled": true,
+  "contextRules": {
+    "alwaysInclude": [
+      ".claude/CLAUDE.md",
+      ".eslintrc.json",
+      "package.json"
+    ],
+    "excludePatterns": [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/logs/**",
+      "**/*.log",
+      "**/coverage/**",
+      "**/.DS_Store"
+    ]
+  },
+  "securityHints": {
+    "architectureReminder": "Follow 5-layer pattern: Routes → Controllers → Services → Repositories → Models",
+    "multiTenancy": "ALWAYS filter by user_id or customer_id in repositories",
+    "encryption": "ALL carrier credentials MUST be encrypted with CryptoHelper",
+    "logging": "NEVER log passwords, tokens, API keys, or sensitive data"
+  }
+}
