@@ -1,0 +1,73 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs
+*.log.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.nyc_output
+test-results
+
+# Documentation
+README.md
+docs/
+*.md
+!package.json
+
+# CI/CD (not needed in image)
+.github
+.gitlab-ci.yml
+.travis.yml
+.circleci
+
+# Docker files (don't copy into image)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Claude Code
+.claude/
+
+# Build artifacts
+dist
+build
+*.tgz
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.bak
+*.swp
+
+# Development tools
+.eslintcache
+.prettierignore
+.editorconfig
