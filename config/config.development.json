@@ -57,7 +57,11 @@
     "queues": [
       {
         "hostId": "localhost",
-        "name": "shipsmart-worker"
+        "name": "CHECK_CREATION"
+      },
+      {
+        "hostId": "localhost",
+        "name": "RATE_FETCH"
       }
     ]
   },

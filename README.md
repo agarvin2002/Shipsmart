@@ -51,6 +51,9 @@ yarn dev
 
 # Start worker (separate terminal)
 yarn worker:dev
+
+# Start Bull Arena UI (separate terminal, optional)
+yarn arena:dev
 ```
 
 ### Verify Setup
@@ -60,7 +63,7 @@ curl http://localhost:3001/health
 # Expected: {"status": "OK"}
 ```
 
-**Bull Arena UI**: http://localhost:3050 (job monitoring)
+**Bull Arena UI**: http://localhost:3050 (job monitoring - run `yarn arena:dev` to start)
 
 ---
 
@@ -153,6 +156,7 @@ GET    /health              # Health check
 ```bash
 yarn dev              # Start API server with hot-reload
 yarn worker:dev       # Start background worker
+yarn arena:dev        # Start Bull Arena UI (job monitoring)
 yarn lint             # Check code style
 ```
 
