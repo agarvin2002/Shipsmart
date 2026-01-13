@@ -1,6 +1,6 @@
 # ShipSmart AI API - Development Standards
 
-> Last Updated: 2026-01-08
+> Last Updated: 2026-01-11
 > Project: Multi-carrier shipping rate comparison platform
 > Stack: Node.js 22, Express, PostgreSQL, Redis, Bull queues
 
@@ -20,6 +20,7 @@
 10. [Testing Guidelines](#testing-guidelines)
 11. [Development Workflow](#development-workflow)
 12. [Critical Security Issues to Avoid](#critical-security-issues-to-avoid)
+13. [Production Deployment Architecture](#production-deployment-architecture)
 
 ---
 
@@ -1281,6 +1282,383 @@ const context = {
 
 await service.operation(data, context);
 ```
+
+---
+
+## Production Deployment Architecture
+
+### Overview
+
+The ShipSmart AI API uses a **single-container production deployment architecture** that mirrors the marauders-map reference project. This design consolidates Nginx, Node.js, and PM2 into a single Docker container for simplified deployment and management.
+
+### Architecture Pattern
+
+```
+                    ┌─────────────────────────────────────┐
+                    │     Docker Container (Alpine)       │
+                    │                                     │
+                    │  ┌──────────────────────────────┐  │
+                    │  │   Nginx (Port 80/443)       │  │
+                    │  │   - Reverse Proxy           │  │
+                    │  │   - Rate Limiting           │  │
+                    │  │   - SSL Termination         │  │
+                    │  │   - Security Headers        │  │
+                    │  └──────────┬───────────────────┘  │
+                    │             │                       │
+                    │             ▼                       │
+                    │  ┌──────────────────────────────┐  │
+                    │  │   PM2 Process Manager        │  │
+                    │  │                              │  │
+                    │  │  • server (port 3001)        │  │
+                    │  │  • worker (background)       │  │
+                    │  │  • arena (port 3050)         │  │
+                    │  └──────────┬───────────────────┘  │
+                    │             │                       │
+                    │             ▼                       │
+                    │  ┌──────────────────────────────┐  │
+                    │  │   Node.js 22 Runtime         │  │
+                    │  │   - Express API              │  │
+                    │  │   - Bull Worker              │  │
+                    │  │   - Bull Arena UI            │  │
+                    │  └──────────────────────────────┘  │
+                    └─────────────────────────────────────┘
+                                   │
+                   ┌───────────────┼───────────────┐
+                   │               │               │
+                   ▼               ▼               ▼
+            PostgreSQL         Redis           S3/Files
+            (External)      (External)        (External)
+```
+
+### Key Design Decisions
+
+#### Why Single Container?
+
+**Based on marauders-map production architecture:**
+- ✅ Simplified deployment (one container to manage)
+- ✅ Reduced orchestration complexity
+- ✅ Lower resource overhead
+- ✅ Easier local testing and debugging
+- ✅ Proven pattern in production systems
+
+**Trade-offs:**
+- ❌ All processes restart together (acceptable for this scale)
+- ❌ Cannot scale API and worker independently (use PM2 cluster mode instead)
+
+#### Why PM2 Inside Container?
+
+- Process management and monitoring
+- Auto-restart on crashes
+- Graceful shutdown handling
+- Log rotation
+- Cluster mode support for API scaling
+- Zero-downtime reloads
+
+#### Why Nginx + Node.js in Same Container?
+
+- Nginx handles SSL termination, rate limiting, static content
+- Reduces external dependencies (no separate load balancer needed initially)
+- Simplifies local testing (production-like environment locally)
+
+### Production Dockerfile
+
+**Key Features:**
+
+1. **Alpine Linux Base** - Minimal footprint (~40MB base)
+2. **Corepack for Yarn 3.6.1** - Ensures exact package manager version match
+3. **Native Module Rebuilding** - bcrypt and msgpackr-extract rebuilt for container architecture
+4. **Environment-based Nginx Config** - Different configs per environment
+5. **Build-time Migrations** - Database schema applied during build
+
+**Critical Build Steps:**
+
+```dockerfile
+# Install Corepack and activate Yarn 3.6.1 (CRITICAL: matches package.json)
+RUN npm install -g corepack && \
+    corepack enable && \
+    corepack prepare yarn@3.6.1 --activate
+
+# Rebuild native modules for correct architecture (CRITICAL for bcrypt)
+RUN yarn rebuild bcrypt msgpackr-extract
+
+# Copy environment-specific Nginx config
+RUN if [ -f nginx/nginx.${NODE_ENV}.conf ]; then \
+      cp nginx/nginx.${NODE_ENV}.conf /etc/nginx/nginx.conf; \
+    fi
+```
+
+### PM2 Process Management
+
+**File:** [pm2.sh](../../pm2.sh)
+
+**Pattern:** Direct PM2 start commands (NOT ecosystem config file)
+
+**Why No pm2.ecosystem.config.js?**
+- marauders-map uses direct `pm2 start` commands
+- Simpler for this use case
+- Easier to debug and modify
+- Matches reference architecture exactly
+
+**Startup Flow:**
+```bash
+1. Start Nginx in background
+2. Kill any existing Node processes
+3. Delete all PM2 processes
+4. Start server process
+5. Start worker process
+6. Start arena process
+7. Sleep infinity (keep container running)
+```
+
+### Nginx Configuration Strategy
+
+**Three Environment-Specific Configs:**
+
+1. **development** - Permissive, verbose logging
+2. **staging** - Moderate restrictions, similar to production
+3. **production** - Strict rate limits, security headers, SSL
+
+**Production Features:**
+```nginx
+# Rate limiting zones
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=5r/m;
+
+# Security headers (all responses)
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Content-Security-Policy: default-src 'self'
+Referrer-Policy: strict-origin-when-cross-origin
+
+# Health check endpoint (no rate limit, no auth)
+location /api/health { ... }
+
+# Auth endpoints (5 req/min)
+location ~ ^/api/auth/(login|register) { ... }
+
+# API endpoints (10 req/s)
+location /api/ { ... }
+```
+
+**SSL/TLS Notes:**
+- HTTPS server block commented out in development/staging
+- Uncomment for production with real certificates
+- Use ACM (AWS) or Let's Encrypt for certificates
+
+### Deployment Workflow (Future)
+
+**When AWS infrastructure is ready:**
+
+```
+Developer Push → GitHub
+    ↓
+Jenkins Webhook Triggered
+    ↓
+1. Checkout code
+2. Install Node.js 22 + Yarn (pre-process.sh)
+3. Pull environment configs from S3
+4. Run: make bootstrap (yarn install)
+5. Run: yarn lint
+6. Build Docker image with NODE_ENV arg
+7. Login to ECR
+8. Push image with tag (branch name)
+9. Deploy to target environment (optional)
+    ↓
+ECS/EC2 pulls new image
+    ↓
+Rolling update (zero downtime)
+    ↓
+Health check verification
+```
+
+### Environment Configuration Management
+
+**Strategy:** S3 buckets per environment (marauders-map pattern)
+
+```
+s3://shipsmart-config-development/
+  ├── config.development.json
+  └── .env.development
+
+s3://shipsmart-config-staging/
+  ├── config.staging.json
+  └── .env.staging
+
+s3://shipsmart-config-production/
+  ├── config.production.json
+  └── .env.production
+```
+
+**Why S3?**
+- Centralized configuration management
+- Easy updates without code commits
+- Version history and rollback
+- Secure storage with IAM roles
+- Environment-specific isolation
+
+### Troubleshooting Production Deployment
+
+#### Issue: bcrypt Module Error (ERR_DLOPEN_FAILED)
+
+**Symptoms:**
+```
+Error loading shared library bcrypt_lib.node: Exec format error
+```
+
+**Root Cause:** bcrypt compiled for wrong CPU architecture (x86_64 vs ARM)
+
+**Solution:**
+```dockerfile
+# Add to Dockerfile AFTER yarn install
+RUN yarn rebuild bcrypt msgpackr-extract
+```
+
+#### Issue: Nginx Service Not Found (Alpine)
+
+**Symptoms:**
+```
+/bin/sh: service: not found
+```
+
+**Root Cause:** Alpine doesn't have `service` command (Ubuntu/Debian specific)
+
+**Solution:**
+```bash
+# WRONG (Ubuntu/Debian)
+service nginx restart -d
+
+# CORRECT (Alpine)
+nginx
+```
+
+#### Issue: Yarn Version Mismatch
+
+**Symptoms:**
+```
+This project's package.json defines "packageManager": "yarn@3.6.1"
+However the current global version of Yarn is 1.22.22
+```
+
+**Root Cause:** Alpine's package manager installs old Yarn version
+
+**Solution:**
+```dockerfile
+# Don't install yarn via apk
+# Use Corepack instead
+RUN npm install -g corepack && \
+    corepack enable && \
+    corepack prepare yarn@3.6.1 --activate
+```
+
+#### Issue: SSL Certificate Missing
+
+**Symptoms:**
+```
+cannot load certificate "/etc/nginx/ssl/cert.pem"
+```
+
+**Root Cause:** nginx.production.conf has HTTPS enabled without certificates
+
+**Solution for Local Testing:**
+```nginx
+# Comment out HTTPS redirect
+# return 301 https://$host$request_uri;
+
+# Comment out entire HTTPS server block
+# server { listen 443 ssl http2; ... }
+```
+
+**Solution for Production:**
+- Provision SSL certificates (ACM, Let's Encrypt)
+- Mount certificates into container
+- Uncomment HTTPS server block
+- Enable redirect
+
+### Production Deployment Phases (from Plan)
+
+**Phase 1 & 2 (COMPLETED):**
+- ✅ Production Dockerfile with Nginx + Node 22 + PM2
+- ✅ PM2 startup script (pm2.sh) matching marauders-map
+- ✅ Nginx configs per environment
+- ✅ Native module rebuilding
+- ✅ Makefile for build automation
+- ✅ Jenkins pipeline structure (jenkinsFile)
+
+**Phase 3 & 4 (PENDING - Requires AWS):**
+- ⏳ Terraform IaC for AWS provisioning
+- ⏳ ECR repository setup
+- ⏳ S3 config bucket strategy
+- ⏳ CloudWatch logging integration
+- ⏳ Jenkins pipeline execution
+- ⏳ Production deployment
+
+### Best Practices
+
+#### Docker Build
+
+```bash
+# Always specify NODE_ENV during build
+docker build --build-arg NODE_ENV=production -t shipsmart-api:latest .
+
+# Tag with version/branch
+docker tag shipsmart-api:latest shipsmart-api:v1.0.0
+docker tag shipsmart-api:latest shipsmart-api:main
+```
+
+#### Testing Production Image Locally
+
+```bash
+# Build production image
+docker build --build-arg NODE_ENV=production -t shipsmart-api:prod .
+
+# Run with external PostgreSQL/Redis
+docker run -p 80:80 -p 3050:3050 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  -e REDIS_URL=redis://host:6379 \
+  -e JWT_SECRET=your-secret \
+  -e ENCRYPTION_KEY=your-32-char-key \
+  shipsmart-api:prod
+
+# Check health
+curl http://localhost/api/health
+
+# Check PM2 status
+docker exec <container-id> pm2 status
+
+# Check Nginx logs
+docker exec <container-id> cat /var/log/nginx/access.log
+```
+
+#### Production Checklist
+
+Before deploying to production:
+
+1. **Security:**
+   - [ ] Change JWT secret (32+ characters)
+   - [ ] Change encryption key (exactly 32 characters)
+   - [ ] Restrict CORS origins (no wildcard)
+   - [ ] Enable Helmet middleware
+   - [ ] Review Nginx security headers
+
+2. **Infrastructure:**
+   - [ ] Database backups configured
+   - [ ] Redis persistence enabled
+   - [ ] SSL certificates provisioned
+   - [ ] Health checks configured
+   - [ ] Monitoring alerts set up
+
+3. **Configuration:**
+   - [ ] Environment variables in Secrets Manager
+   - [ ] Carrier API URLs updated to production
+   - [ ] Database connection pool sized correctly
+   - [ ] Redis max memory configured
+
+4. **Testing:**
+   - [ ] Load testing completed
+   - [ ] Failover scenarios tested
+   - [ ] Rollback procedure documented
+   - [ ] Health check endpoint responds correctly
 
 ---
 
