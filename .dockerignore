@@ -52,6 +52,9 @@ docker-compose*.yml
 Dockerfile*
 .dockerignore
 
+# Production testing
+scripts/test-production-local.sh
+
 # Claude Code
 .claude/
 

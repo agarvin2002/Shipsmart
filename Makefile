@@ -4,7 +4,7 @@ SOURCES = service packages
 .PHONY: bootstrap clean-all clean-and-update-yarn-lock dev-clean-install docker-up docker-down docker-logs docker-clean docker-ps start dev worker worker-dev
 
 bootstrap:
-	yarn install --inline-builds
+	yarn install --frozen-lockfile
 
 clean-all:
 	rm -rf node_modules
