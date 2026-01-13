@@ -1446,48 +1446,91 @@ location /api/ { ... }
 - Uncomment for production with real certificates
 - Use ACM (AWS) or Let's Encrypt for certificates
 
-### Deployment Workflow (Future)
+### Deployment Workflow (Separate CI/CD Jobs)
 
-**When AWS infrastructure is ready:**
+**Architecture:** Separate Jenkins jobs for CI (build) and CD (deploy)
+
+**Important:** Jenkins is configured for AWS deployment only. LocalStack is for local development via docker-compose.
+
+#### **Job 1: CI Pipeline (jenkinsFile)**
+
+Builds and pushes Docker images to ECR:
 
 ```
 Developer Push → GitHub
     ↓
-Jenkins Webhook Triggered
+Jenkins Webhook Triggered (shipsmart-api-ci)
     ↓
-1. Checkout code
+1. Checkout code from GitHub
 2. Install Node.js 22 + Yarn (pre-process.sh)
-3. Pull environment configs from S3
-4. Run: make bootstrap (yarn install)
-5. Run: yarn lint
+3. Pull environment configs from AWS S3
+4. Run: make dev-clean-install (yarn install)
+5. Run: yarn lint & yarn test
 6. Build Docker image with NODE_ENV arg
-7. Login to ECR
-8. Push image with tag (branch name)
-9. Deploy to target environment (optional)
+7. Login to AWS ECR
+8. Push image to ECR (tagged with branch name)
     ↓
-ECS/EC2 pulls new image
+Image available in ECR ✅
+```
+
+**CI Parameters:**
+- `ghprbSourceBranch`: Branch to build (e.g., 'main', 'develop')
+- `NODE_ENV`: 'development', 'staging', or 'production'
+- `NOTIFICATION`: Enable Slack notifications (default: false)
+
+#### **Job 2: CD Pipeline (jenkinsFile.deploy)**
+
+Deploys ECR images to ECS:
+
+```
+Manual trigger or automatic from CI
+    ↓
+Jenkins Deploy Job (shipsmart-api-deploy)
+    ↓
+1. Verify image exists in ECR
+2. Pre-deployment checks
+3. Run: scripts/deploy.sh <env> <tag>
+   - Get current task definition
+   - Register new task definition with new image
+   - Update ECS service (rolling update)
+4. Verify deployment success
+    ↓
+ECS pulls new image from ECR
     ↓
 Rolling update (zero downtime)
     ↓
-Health check verification
+Health check verification ✅
 ```
+
+**CD Parameters:**
+- `NODE_ENV`: Environment to deploy to
+- `IMAGE_TAG`: Docker image tag to deploy (e.g., 'main', 'v1.0.0')
+- `NOTIFICATION`: Enable Slack notifications (default: false)
+
+**AWS Resources Required:**
+- ECR Repository: `shipsmart-api` (us-east-1)
+- S3 Bucket: `s3://shipsmart-config`
+- ECS Cluster: `shipsmart-{env}-cluster`
+- ECS Service: `shipsmart-{env}-service`
+- IAM Role: Jenkins agent with ECR push, S3 read, and ECS update permissions
+
+**See:** `scripts/README.md` for detailed setup instructions
 
 ### Environment Configuration Management
 
-**Strategy:** S3 buckets per environment (marauders-map pattern)
+**Strategy:** Single S3 bucket with all configs (marauders-map pattern)
 
 ```
-s3://shipsmart-config-development/
+s3://shipsmart-config/
   ├── config.development.json
-  └── .env.development
-
-s3://shipsmart-config-staging/
   ├── config.staging.json
-  └── .env.staging
-
-s3://shipsmart-config-production/
   ├── config.production.json
-  └── .env.production
+  └── config.localhost.json (for local dev only)
+```
+
+**Jenkins pulls all configs recursively:**
+```bash
+aws s3 cp s3://shipsmart-config/ config/ --recursive
 ```
 
 **Why S3?**
@@ -1495,7 +1538,25 @@ s3://shipsmart-config-production/
 - Easy updates without code commits
 - Version history and rollback
 - Secure storage with IAM roles
-- Environment-specific isolation
+- Single bucket simplifies IAM permissions
+
+### Local Development with LocalStack
+
+**LocalStack is for local development ONLY** (not used by Jenkins)
+
+**Setup:**
+```bash
+# Start LocalStack via docker-compose
+yarn docker:up
+
+# LocalStack automatically creates S3 bucket and uploads configs
+# See: localstack-init/01-setup-buckets-and-ecr.sh
+```
+
+**LocalStack provides:**
+- S3 mock at `http://localhost:4566`
+- Bucket: `s3://shipsmart-config` with test configs
+- Used by local docker-compose, NOT by Jenkins
 
 ### Troubleshooting Production Deployment
 

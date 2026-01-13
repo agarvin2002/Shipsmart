@@ -1,47 +1,33 @@
-// ShipSmart AI API - Jenkins CI/CD Pipeline
-// Purpose: Automated build, test, Docker image creation, and deployment
+// ShipSmart AI API - Jenkins CI Pipeline (Build & Push to ECR)
+// Purpose: Build, test, and push Docker images to AWS ECR
+//
+// Note: This is CI only. For deployment, use the separate jenkinsFile.deploy job.
 //
 // Required Jenkins Parameters:
-//   - ghprbSourceBranch (String): Branch to build (e.g., 'main', 'develop', 'feature/xyz')
-//   - NODE_ENV (Choice): Environment - 'development', 'staging', 'production', 'localhost'
-//   - USE_LOCALSTACK (Boolean): Use LocalStack for local AWS service emulation (default: false)
-//   - DEPLOY_ENABLED (Boolean): Whether to deploy after build (default: false)
-//   - NOTIFICATION (Boolean): Enable Slack/email notifications (default: true)
+//   - ghprbSourceBranch (String): Branch to build (e.g., 'main', 'develop')
+//   - NODE_ENV (Choice): Environment - 'development', 'staging', 'production'
+//   - NOTIFICATION (Boolean): Enable Slack/email notifications (default: false)
 //
 // Required Jenkins Credentials:
-//   - GITHUB_CREDENTIALS_ID: GitHub access token for repository access
-//   - AWS_CREDENTIALS_ID: AWS credentials for ECR and S3 access
-//   - SLACK_WEBHOOK (optional): Slack webhook for notifications
+//   - GITHUB_CREDENTIALS_ID: GitHub access token
+//   - AWS credentials configured on Jenkins agent
 //
 // AWS Resources Required:
 //   - ECR Repository: shipsmart-api (region: us-east-1)
-//   - S3 Bucket: shipsmart-config (contains config.{development,staging,production}.json)
+//   - S3 Bucket: shipsmart-config (contains config files)
 //   - IAM Role: Jenkins agent with ECR push and S3 read permissions
-//
-// LocalStack Mode (USE_LOCALSTACK=true):
-//   - LocalStack container at http://localstack:4566
-//   - S3 bucket: s3://shipsmart-config/
-//   - ECR repository: shipsmart-api
-//
-// Usage:
-//   1. Configure Jenkins job with these parameters
-//   2. Connect GitHub webhook for auto-trigger on push
-//   3. Ensure Jenkins agent/slave has Docker installed
-//   4. First run will create ECR repository if it doesn't exist
 
 // Jenkins job configuration
 jobName       = env.JOB_NAME
 release       = params.ghprbSourceBranch ?: 'main'
 nodeEnv       = params.NODE_ENV ?: 'development'
-useLocalStack = params.USE_LOCALSTACK ?: 'false'
-notification  = params.NOTIFICATION ?: 'true'
-deployEnabled = params.DEPLOY_ENABLED ?: 'false'
+notification  = params.NOTIFICATION ?: 'false'
 
 // AWS configuration
 awsRegion     = 'us-east-1'
-awsAccountId  = env.AWS_ACCOUNT_ID  // Set this in Jenkins environment variables
+awsAccountId  = env.AWS_ACCOUNT_ID ?: 'YOUR_AWS_ACCOUNT_ID'
 imageName     = "${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/shipsmart-api"
-s3ConfigBucket = "s3://shipsmart-config"  // Single bucket like marauders-map
+s3ConfigBucket = "s3://shipsmart-config"
 
 // Slack notification flag
 slackError    = 0
@@ -53,7 +39,7 @@ node {
     // =============================================================================
     stage('Checkout') {
       echo "========================================="
-      echo "Stage 1: Checkout from GitHub"
+      echo "Checkout from GitHub"
       echo "========================================="
       echo "Branch: ${release}"
       echo "Environment: ${nodeEnv}"
@@ -79,7 +65,7 @@ node {
     // =============================================================================
     stage('Pre-process') {
       echo "========================================="
-      echo "Stage 2: Pre-process (Node.js 22 + Yarn Setup)"
+      echo "Pre-process (Node.js 22 + Yarn Setup)"
       echo "========================================="
 
       sh """#!/bin/bash
@@ -94,44 +80,20 @@ node {
     // =============================================================================
     stage('Initial Setup') {
       echo "========================================="
-      echo "Stage 3: Initial Setup (Pull configs from S3)"
+      echo "Initial Setup (Pull configs from S3)"
       echo "========================================="
       echo "S3 Bucket: ${s3ConfigBucket}"
       echo "Environment: ${nodeEnv}"
-      echo "Use LocalStack: ${useLocalStack}"
       echo "========================================="
 
       sh """#!/bin/bash
-        # Configure AWS endpoint based on environment
-        if [ "${nodeEnv}" = "localhost" ]; then
-          # Mac Jenkins - connect to LocalStack on localhost
-          export AWS_ENDPOINT_URL=http://localhost:4566
-          export AWS_ACCESS_KEY_ID=test
-          export AWS_SECRET_ACCESS_KEY=test
-          export AWS_DEFAULT_REGION=us-east-1
-          echo "Mac Jenkins: Using LocalStack at \${AWS_ENDPOINT_URL}"
-        elif [ "${useLocalStack}" = "true" ]; then
-          # Containerized Jenkins - connect to LocalStack via Docker network
-          export AWS_ENDPOINT_URL=http://localstack:4566
-          export AWS_ACCESS_KEY_ID=test
-          export AWS_SECRET_ACCESS_KEY=test
-          export AWS_DEFAULT_REGION=us-east-1
-          echo "Containerized Jenkins: Using LocalStack at \${AWS_ENDPOINT_URL}"
-        else
-          echo "Using real AWS services"
-        fi
+        set -e
 
-        # Copy all config files from S3 (like marauders-map)
-        if aws s3 ls ${s3ConfigBucket} \${AWS_ENDPOINT_URL:+--endpoint-url \$AWS_ENDPOINT_URL} >/dev/null 2>&1; then
-          echo "Pulling configs from S3..."
-          aws s3 cp ${s3ConfigBucket}/ config/ --recursive \${AWS_ENDPOINT_URL:+--endpoint-url \$AWS_ENDPOINT_URL}
-          echo "Configs pulled successfully!"
-          echo "Files in config/:"
-          ls -la config/
-        else
-          echo "S3 bucket not found, using local configs"
-          echo "This is expected if AWS is not yet configured"
-        fi
+        # Pull all config files from S3 (like marauders-map)
+        aws s3 cp ${s3ConfigBucket}/ config/ --recursive
+
+        echo "Configs pulled successfully!"
+        ls -la config/
       """
 
       echo "Setup complete!"
@@ -142,19 +104,15 @@ node {
     // =============================================================================
     stage('Build') {
       echo "========================================="
-      echo "Stage 4: Build (Install Dependencies)"
+      echo "Build (Install Dependencies)"
       echo "========================================="
 
       sh """#!/bin/bash
         set -e
-
-        # Install dependencies using Makefile
         make dev-clean-install
-
-        echo "Build complete!"
       """
 
-      echo "Dependencies installed successfully!"
+      echo "Build complete!"
     }
 
     // =============================================================================
@@ -162,22 +120,18 @@ node {
     // =============================================================================
     stage('Lint & Test') {
       echo "========================================="
-      echo "Stage 5: Lint & Test"
+      echo "Lint & Test"
       echo "========================================="
 
       sh """#!/bin/bash
         set -e
 
         # Run linting
-        echo "Running ESLint..."
         yarn lint || echo "Linting completed with warnings"
 
-        # Run tests (when implemented)
-        echo "Running tests..."
+        # Run tests (if configured)
         cd service
-        yarn test || echo "Tests not yet implemented or failed"
-
-        echo "Lint & Test stage complete!"
+        yarn test || echo "Tests not yet implemented"
       """
 
       echo "Lint & Test complete!"
@@ -188,110 +142,76 @@ node {
     // =============================================================================
     stage('Docker Build') {
       echo "========================================="
-      echo "Stage 6: Docker Build"
+      echo "Docker Build"
       echo "========================================="
-      echo "Environment: ${nodeEnv}"
+      echo "Building image: shipsmart-api:${release}"
       echo "========================================="
 
       sh """#!/bin/bash
         set -e
 
-        # Build Docker image with NODE_ENV build arg
+        # Build Docker image
         docker build \
           --build-arg NODE_ENV=${nodeEnv} \
           -t shipsmart-api:${release} \
           -t shipsmart-api:latest \
-          -f Dockerfile \
           .
 
-        echo "Docker build complete!"
+        echo "Docker images built:"
         docker images | grep shipsmart-api
       """
 
-      echo "Docker image built successfully!"
+      echo "Docker build complete!"
     }
 
     // =============================================================================
-    // STAGE 7: ECR LOGIN & PUSH
+    // STAGE 7: ECR PUSH
     // =============================================================================
-    stage('ECR Login & Push') {
+    stage('ECR Push') {
       echo "========================================="
-      echo "Stage 7: ECR Login & Push"
+      echo "ECR Push"
       echo "========================================="
-      echo "Registry: ${imageName}"
-      echo "Tags: ${release}, latest"
-      echo "Use LocalStack: ${useLocalStack}"
+      echo "Pushing to: ${imageName}"
       echo "========================================="
 
       sh """#!/bin/bash
-        set +e  # Don't exit on error (for learning without AWS)
+        set -e
 
-        if [ "${nodeEnv}" = "localhost" ]; then
-          echo "Mac Jenkins: Using Local Docker Registry at localhost:5000..."
+        # Check if AWS credentials are configured
+        if aws sts get-caller-identity >/dev/null 2>&1; then
+          echo "AWS credentials verified"
 
-          REGISTRY_URI=localhost:5000/shipsmart-api
+          # Login to ECR
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region ${awsRegion} | \
+            docker login --username AWS --password-stdin \${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com
 
-          # Tag images for local registry
-          echo "Tagging images for local registry..."
-          docker tag shipsmart-api:${release} \${REGISTRY_URI}:${release}
-          docker tag shipsmart-api:latest \${REGISTRY_URI}:latest
-
-          # Push to local registry
-          echo "Pushing Docker images to local registry..."
-          docker push \${REGISTRY_URI}:${release}
-          docker push \${REGISTRY_URI}:latest
-
-          echo "Local registry push complete!"
-          echo "Images:"
-          echo "  - \${REGISTRY_URI}:${release}"
-          echo "  - \${REGISTRY_URI}:latest"
-        elif [ "${useLocalStack}" = "true" ]; then
-          echo "Containerized Jenkins: Using Local Docker Registry at registry:5000..."
-
-          REGISTRY_URI=registry:5000/shipsmart-api
-
-          # Tag images for local registry
-          echo "Tagging images for local registry..."
-          docker tag shipsmart-api:${release} \${REGISTRY_URI}:${release}
-          docker tag shipsmart-api:latest \${REGISTRY_URI}:latest
-
-          # Push to local registry
-          echo "Pushing Docker images to local registry..."
-          docker push \${REGISTRY_URI}:${release}
-          docker push \${REGISTRY_URI}:latest
-
-          echo "Local registry push complete!"
-          echo "Images:"
-          echo "  - \${REGISTRY_URI}:${release}"
-          echo "  - \${REGISTRY_URI}:latest"
-        else
-          # Check if AWS credentials are available
-          if aws sts get-caller-identity >/dev/null 2>&1; then
-            echo "AWS credentials found, proceeding with ECR push..."
-
-            # Login to ECR
-            echo "Logging into ECR..."
-            aws ecr get-login-password --region ${awsRegion} | docker login --username AWS --password-stdin ${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com
-
-            # Create ECR repository if it doesn't exist
-            aws ecr describe-repositories --repository-names shipsmart-api --region ${awsRegion} >/dev/null 2>&1 || \
-              aws ecr create-repository --repository-name shipsmart-api --region ${awsRegion}
-
-            # Push images
-            echo "Pushing Docker images to ECR..."
-            docker push ${imageName}:${release}
-            docker push ${imageName}:latest
-
-            echo "ECR push complete!"
-          else
-            echo "AWS credentials not found or not configured"
-            echo "Skipping ECR push (this is expected for local development)"
-            echo "To enable ECR push:"
-            echo "  1. Set USE_LOCALSTACK=true for local testing, OR"
-            echo "  2. Configure AWS credentials in Jenkins"
-            echo "  3. Create ECR repository: shipsmart-api"
-            echo "  4. Grant Jenkins IAM role ECR push permissions"
+          # Check if ECR repository exists
+          if ! aws ecr describe-repositories --repository-names shipsmart-api --region ${awsRegion} >/dev/null 2>&1; then
+            echo "ECR repository 'shipsmart-api' not found, creating..."
+            aws ecr create-repository --repository-name shipsmart-api --region ${awsRegion}
+            echo "ECR repository created"
           fi
+
+          # Tag and push images
+          echo "Tagging images..."
+          docker tag shipsmart-api:${release} ${imageName}:${release}
+          docker tag shipsmart-api:${release} ${imageName}:latest
+
+          echo "Pushing to ECR..."
+          docker push ${imageName}:${release}
+          docker push ${imageName}:latest
+
+          echo "ECR push complete!"
+        else
+          echo "========================================="
+          echo "AWS credentials not configured"
+          echo "Skipping ECR push"
+          echo "To enable ECR push:"
+          echo "  1. Configure AWS credentials in Jenkins"
+          echo "  2. Set AWS_ACCOUNT_ID environment variable"
+          echo "  3. Grant Jenkins IAM role ECR push permissions"
+          echo "========================================="
         fi
       """
 
@@ -299,85 +219,31 @@ node {
     }
 
     // =============================================================================
-    // STAGE 8: DEPLOY (OPTIONAL)
+    // BUILD SUCCESS
     // =============================================================================
-    stage('Deploy') {
-      if (deployEnabled == 'true') {
-        echo "========================================="
-        echo "Stage 8: Deploy to ${nodeEnv}"
-        echo "========================================="
-
-        sh """#!/bin/bash
-          set +e  # Don't exit on error
-
-          # Check if deployment script exists
-          if [ -f scripts/deploy.sh ]; then
-            echo "Running deployment script..."
-            bash scripts/deploy.sh ${nodeEnv} ${release}
-          else
-            echo "Deployment script not found"
-            echo "Create scripts/deploy.sh for automated deployment"
-            echo ""
-            echo "Example deployment strategies:"
-            echo "  - SSH to EC2 and pull latest Docker image"
-            echo "  - Update ECS task definition with new image"
-            echo "  - Kubernetes rolling update"
-            echo "  - Blue-green deployment with AWS CodeDeploy"
-          fi
-        """
-
-        echo "Deploy stage complete!"
-      } else {
-        echo "Deployment disabled (DEPLOY_ENABLED=false)"
-        echo "To enable deployment, set DEPLOY_ENABLED=true in Jenkins parameters"
-      }
-    }
-
-    // =============================================================================
-    // SUCCESS NOTIFICATION
-    // =============================================================================
-    if (notification == 'true') {
-      echo "========================================="
-      echo "Build Successful!"
-      echo "========================================="
-      echo "Job: ${jobName}"
-      echo "Branch: ${release}"
-      echo "Environment: ${nodeEnv}"
-      echo "Image: ${imageName}:${release}"
-      echo "========================================="
-
-      // Slack notification (optional)
-      // slackSend(
-      //   color: 'good',
-      //   message: "Build successful: ${jobName} - ${release}\nEnvironment: ${nodeEnv}"
-      // )
-    }
+    echo "========================================="
+    echo "Build Successful!"
+    echo "========================================="
+    echo "Job: ${jobName}"
+    echo "Branch: ${release}"
+    echo "Environment: ${nodeEnv}"
+    echo "Image: ${imageName}:${release}"
+    echo "========================================="
 
   } catch (Exception e) {
-    // =============================================================================
-    // ERROR HANDLING
-    // =============================================================================
     echo "========================================="
     echo "Build Failed!"
     echo "========================================="
     echo "Error: ${e.message}"
-    echo "========================================="
-
     currentBuild.result = 'FAILURE'
     slackError = 1
 
-    // Send failure notification
+    // Send notification on failure
     if (notification == 'true') {
-      // Slack notification (optional)
-      // slackSend(
-      //   color: 'danger',
-      //   message: "Build failed: ${jobName} - ${release}\nEnvironment: ${nodeEnv}\nError: ${e.message}"
-      // )
-
-      echo "Failure notification sent"
+      echo "Sending failure notification..."
+      // Add Slack notification here if configured
     }
 
-    // Re-throw exception to mark build as failed
     throw e
 
   } finally {
@@ -388,11 +254,9 @@ node {
     echo "Cleanup"
     echo "========================================="
 
-    // Clean up Docker images to save space (optional)
     sh """#!/bin/bash
-      # Remove dangling images
+      # Clean up dangling Docker images
       docker image prune -f || true
-
       echo "Cleanup complete!"
     """
   }

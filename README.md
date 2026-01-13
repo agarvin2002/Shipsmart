@@ -373,17 +373,52 @@ Environment-specific Nginx configurations:
 - [ ] Set up deployment pipeline (Jenkins, GitHub Actions)
 - [ ] Test health check endpoint: `curl http://your-domain/api/health`
 
-### CI/CD Pipeline Structure
+### CI/CD Pipeline (Jenkins)
 
-For automated deployments, the project includes Jenkins pipeline configuration:
+The project uses **separate Jenkins jobs** for CI (build) and CD (deploy):
 
-1. **Build** - Install dependencies, run migrations
-2. **Test** - Lint code (tests when available)
-3. **Docker Build** - Create production Docker image
-4. **Push** - Upload to container registry (ECR)
-5. **Deploy** - Update running containers
+#### **Job 1: CI Pipeline** (`jenkinsFile`)
+Builds and pushes Docker images to AWS ECR:
+```
+1. Checkout from GitHub
+2. Install Node.js 22 + Yarn
+3. Pull configs from S3
+4. Install dependencies (make dev-clean-install)
+5. Lint & test
+6. Build Docker image
+7. Push to ECR
+```
 
-See `.claude/plans/` for complete deployment architecture plan.
+**Job Name:** `shipsmart-api-ci`
+**Trigger:** GitHub webhook on push
+
+#### **Job 2: CD Pipeline** (`jenkinsFile.deploy`)
+Deploys ECR images to AWS ECS:
+```
+1. Verify image exists in ECR
+2. Pre-deployment checks
+3. Run deploy script:
+   - Update ECS task definition
+   - Trigger rolling deployment
+4. Verify deployment success
+```
+
+**Job Name:** `shipsmart-api-deploy`
+**Trigger:** Manual or automatic from CI job
+
+**Deployment Script:** `scripts/deploy.sh <environment> <image_tag>`
+
+**AWS Resources Required:**
+- ECR Repository: `shipsmart-api`
+- S3 Bucket: `s3://shipsmart-config`
+- ECS Clusters: `shipsmart-{env}-cluster`
+- ECS Services: `shipsmart-{env}-service`
+- IAM Role: Jenkins with ECR push, S3 read, ECS update permissions
+
+**Manual Deployment:**
+```bash
+bash scripts/deploy.sh production main
+```
 
 ### Local Production Testing
 

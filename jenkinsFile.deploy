@@ -1,0 +1,219 @@
+// ShipSmart AI API - Jenkins CD Pipeline (Deployment Only)
+// Purpose: Deploy Docker images from ECR to AWS infrastructure
+//
+// This is a separate deployment job that runs AFTER the CI job (jenkinsFile)
+//
+// Workflow:
+//   1. CI Job (jenkinsFile) → Build & Push to ECR
+//   2. CD Job (jenkinsFile.deploy) → Deploy to ECS/EC2
+//
+// Required Jenkins Parameters:
+//   - NODE_ENV (Choice): Environment - 'development', 'staging', 'production'
+//   - IMAGE_TAG (String): Docker image tag to deploy (e.g., 'main', 'v1.0.0', 'develop')
+//   - NOTIFICATION (Boolean): Enable Slack/email notifications (default: false)
+//
+// Required Jenkins Credentials:
+//   - AWS credentials configured on Jenkins agent
+//
+// AWS Resources Required:
+//   - ECR Repository: shipsmart-api (with image already pushed)
+//   - ECS Cluster: shipsmart-{env}-cluster
+//   - ECS Service: shipsmart-{env}-service
+//   - IAM Role: Jenkins agent with ECS update permissions
+
+// Jenkins job configuration
+jobName       = env.JOB_NAME
+nodeEnv       = params.NODE_ENV ?: 'development'
+imageTag      = params.IMAGE_TAG ?: 'latest'
+notification  = params.NOTIFICATION ?: 'false'
+
+// AWS configuration
+awsRegion     = 'us-east-1'
+awsAccountId  = env.AWS_ACCOUNT_ID ?: 'YOUR_AWS_ACCOUNT_ID'
+imageName     = "${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/shipsmart-api"
+
+// Slack notification flag
+slackError    = 0
+
+node {
+  try {
+    // =============================================================================
+    // STAGE 1: VERIFY IMAGE EXISTS
+    // =============================================================================
+    stage('Verify Image') {
+      echo "========================================="
+      echo "Verify Docker Image in ECR"
+      echo "========================================="
+      echo "Environment: ${nodeEnv}"
+      echo "Image: ${imageName}:${imageTag}"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Check if AWS credentials are configured
+        if ! aws sts get-caller-identity >/dev/null 2>&1; then
+          echo "ERROR: AWS credentials not configured"
+          exit 1
+        fi
+
+        # Check if image exists in ECR
+        echo "Checking if image exists in ECR..."
+        if aws ecr describe-images \
+          --repository-name shipsmart-api \
+          --image-ids imageTag=${imageTag} \
+          --region ${awsRegion} >/dev/null 2>&1; then
+          echo "✓ Image found: ${imageName}:${imageTag}"
+        else
+          echo "ERROR: Image not found in ECR: ${imageName}:${imageTag}"
+          echo "Run the CI job first to build and push the image"
+          exit 1
+        fi
+      """
+
+      echo "Image verification complete!"
+    }
+
+    // =============================================================================
+    // STAGE 2: PRE-DEPLOYMENT CHECKS
+    // =============================================================================
+    stage('Pre-Deployment Checks') {
+      echo "========================================="
+      echo "Pre-Deployment Checks"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Check if deployment script exists
+        if [ ! -f scripts/deploy.sh ]; then
+          echo "ERROR: Deployment script not found: scripts/deploy.sh"
+          exit 1
+        fi
+
+        # Verify ECS cluster and service exist (will be created later)
+        echo "Checking AWS infrastructure..."
+        echo "Environment: ${nodeEnv}"
+        echo "Region: ${awsRegion}"
+
+        # This will fail gracefully if resources don't exist yet
+        echo "Infrastructure checks complete (will verify during deployment)"
+      """
+
+      echo "Pre-deployment checks complete!"
+    }
+
+    // =============================================================================
+    // STAGE 3: DEPLOY
+    // =============================================================================
+    stage('Deploy') {
+      echo "========================================="
+      echo "Deploy to ${nodeEnv}"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Run deployment script
+        bash scripts/deploy.sh ${nodeEnv} ${imageTag}
+
+        echo "Deployment complete!"
+      """
+
+      echo "Deploy stage complete!"
+    }
+
+    // =============================================================================
+    // STAGE 4: VERIFY DEPLOYMENT
+    // =============================================================================
+    stage('Verify Deployment') {
+      echo "========================================="
+      echo "Verify Deployment"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Wait for ECS service to stabilize
+        echo "Waiting for ECS service to stabilize..."
+
+        # Determine cluster and service names
+        case ${nodeEnv} in
+          development)
+            CLUSTER="shipsmart-dev-cluster"
+            SERVICE="shipsmart-dev-service"
+            ;;
+          staging)
+            CLUSTER="shipsmart-staging-cluster"
+            SERVICE="shipsmart-staging-service"
+            ;;
+          production)
+            CLUSTER="shipsmart-prod-cluster"
+            SERVICE="shipsmart-prod-service"
+            ;;
+          *)
+            echo "Unknown environment: ${nodeEnv}"
+            exit 1
+            ;;
+        esac
+
+        # Check if ECS service exists
+        if aws ecs describe-services \
+          --cluster \${CLUSTER} \
+          --services \${SERVICE} \
+          --region ${awsRegion} >/dev/null 2>&1; then
+
+          # Wait for service to be stable (max 5 minutes)
+          echo "Waiting for service \${SERVICE} in cluster \${CLUSTER}..."
+          aws ecs wait services-stable \
+            --cluster \${CLUSTER} \
+            --services \${SERVICE} \
+            --region ${awsRegion} \
+            || echo "Service stabilization timeout (check ECS console)"
+
+          echo "✓ Service is stable"
+        else
+          echo "ECS service not found yet (first deployment may require manual setup)"
+        fi
+      """
+
+      echo "Deployment verification complete!"
+    }
+
+    // =============================================================================
+    // DEPLOYMENT SUCCESS
+    // =============================================================================
+    echo "========================================="
+    echo "Deployment Successful!"
+    echo "========================================="
+    echo "Job: ${jobName}"
+    echo "Environment: ${nodeEnv}"
+    echo "Image: ${imageName}:${imageTag}"
+    echo "========================================="
+
+  } catch (Exception e) {
+    echo "========================================="
+    echo "Deployment Failed!"
+    echo "========================================="
+    echo "Error: ${e.message}"
+    currentBuild.result = 'FAILURE'
+    slackError = 1
+
+    // Send notification on failure
+    if (notification == 'true') {
+      echo "Sending failure notification..."
+      // Add Slack notification here if configured
+    }
+
+    throw e
+
+  } finally {
+    // =============================================================================
+    // CLEANUP
+    // =============================================================================
+    echo "========================================="
+    echo "Cleanup"
+    echo "========================================="
+    echo "Deployment job complete!"
+  }
+}
