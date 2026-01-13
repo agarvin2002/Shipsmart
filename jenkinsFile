@@ -290,7 +290,8 @@ node {
             echo "  1. Set USE_LOCALSTACK=true for local testing, OR"
             echo "  2. Configure AWS credentials in Jenkins"
             echo "  3. Create ECR repository: shipsmart-api"
-          echo "  3. Grant Jenkins IAM role ECR push permissions"
+            echo "  4. Grant Jenkins IAM role ECR push permissions"
+          fi
         fi
       """
 
