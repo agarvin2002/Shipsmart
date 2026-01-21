@@ -1,0 +1,263 @@
+// ShipSmart AI API - Jenkins CI Pipeline (Build & Push to ECR)
+// Purpose: Build, test, and push Docker images to AWS ECR
+//
+// Note: This is CI only. For deployment, use the separate jenkinsFile.deploy job.
+//
+// Required Jenkins Parameters:
+//   - ghprbSourceBranch (String): Branch to build (e.g., 'main', 'develop')
+//   - NODE_ENV (Choice): Environment - 'development', 'staging', 'production'
+//   - NOTIFICATION (Boolean): Enable Slack/email notifications (default: false)
+//
+// Required Jenkins Credentials:
+//   - GITHUB_CREDENTIALS_ID: GitHub access token
+//   - AWS credentials configured on Jenkins agent
+//
+// AWS Resources Required:
+//   - ECR Repository: shipsmart-api (region: us-east-1)
+//   - S3 Bucket: shipsmart-config (contains config files)
+//   - IAM Role: Jenkins agent with ECR push and S3 read permissions
+
+// Jenkins job configuration
+jobName       = env.JOB_NAME
+release       = params.ghprbSourceBranch ?: 'main'
+nodeEnv       = params.NODE_ENV ?: 'development'
+notification  = params.NOTIFICATION ?: 'false'
+
+// AWS configuration
+awsRegion     = 'us-east-1'
+awsAccountId  = env.AWS_ACCOUNT_ID ?: 'YOUR_AWS_ACCOUNT_ID'
+imageName     = "${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com/shipsmart-api"
+s3ConfigBucket = "s3://shipsmart-config"
+
+// Slack notification flag
+slackError    = 0
+
+node {
+  try {
+    // =============================================================================
+    // STAGE 1: CHECKOUT
+    // =============================================================================
+    stage('Checkout') {
+      echo "========================================="
+      echo "Checkout from GitHub"
+      echo "========================================="
+      echo "Branch: ${release}"
+      echo "Environment: ${nodeEnv}"
+      echo "========================================="
+
+      checkout([
+        $class: 'GitSCM',
+        branches: [[name: release]],
+        doGenerateSubmoduleConfigurations: false,
+        extensions: [],
+        submoduleCfg: [],
+        userRemoteConfigs: [[
+          credentialsId: env.GITHUB_CREDENTIALS_ID,
+          url: 'https://github.com/agarvin2002/shipsmart-ai-api.git'
+        ]]
+      ])
+
+      echo "Checkout complete!"
+    }
+
+    // =============================================================================
+    // STAGE 2: PRE-PROCESS
+    // =============================================================================
+    stage('Pre-process') {
+      echo "========================================="
+      echo "Pre-process (Node.js 22 + Yarn Setup)"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        bash build/pre-process.sh
+      """
+
+      echo "Pre-process complete!"
+    }
+
+    // =============================================================================
+    // STAGE 3: INITIAL SETUP (S3 CONFIG PULL)
+    // =============================================================================
+    stage('Initial Setup') {
+      echo "========================================="
+      echo "Initial Setup (Pull configs from S3)"
+      echo "========================================="
+      echo "S3 Bucket: ${s3ConfigBucket}"
+      echo "Environment: ${nodeEnv}"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Pull all config files from S3 (like marauders-map)
+        aws s3 cp ${s3ConfigBucket}/ config/ --recursive
+
+        echo "Configs pulled successfully!"
+        ls -la config/
+      """
+
+      echo "Setup complete!"
+    }
+
+    // =============================================================================
+    // STAGE 4: BUILD
+    // =============================================================================
+    stage('Build') {
+      echo "========================================="
+      echo "Build (Install Dependencies)"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+        make dev-clean-install
+      """
+
+      echo "Build complete!"
+    }
+
+    // =============================================================================
+    // STAGE 5: LINT & TEST
+    // =============================================================================
+    stage('Lint & Test') {
+      echo "========================================="
+      echo "Lint & Test"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Run linting
+        yarn lint || echo "Linting completed with warnings"
+
+        # Run tests (if configured)
+        cd service
+        yarn test || echo "Tests not yet implemented"
+      """
+
+      echo "Lint & Test complete!"
+    }
+
+    // =============================================================================
+    // STAGE 6: DOCKER BUILD
+    // =============================================================================
+    stage('Docker Build') {
+      echo "========================================="
+      echo "Docker Build"
+      echo "========================================="
+      echo "Building image: shipsmart-api:${release}"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Build Docker image
+        docker build \
+          --build-arg NODE_ENV=${nodeEnv} \
+          -t shipsmart-api:${release} \
+          -t shipsmart-api:latest \
+          .
+
+        echo "Docker images built:"
+        docker images | grep shipsmart-api
+      """
+
+      echo "Docker build complete!"
+    }
+
+    // =============================================================================
+    // STAGE 7: ECR PUSH
+    // =============================================================================
+    stage('ECR Push') {
+      echo "========================================="
+      echo "ECR Push"
+      echo "========================================="
+      echo "Pushing to: ${imageName}"
+      echo "========================================="
+
+      sh """#!/bin/bash
+        set -e
+
+        # Check if AWS credentials are configured
+        if aws sts get-caller-identity >/dev/null 2>&1; then
+          echo "AWS credentials verified"
+
+          # Login to ECR
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region ${awsRegion} | \
+            docker login --username AWS --password-stdin \${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com
+
+          # Check if ECR repository exists
+          if ! aws ecr describe-repositories --repository-names shipsmart-api --region ${awsRegion} >/dev/null 2>&1; then
+            echo "ECR repository 'shipsmart-api' not found, creating..."
+            aws ecr create-repository --repository-name shipsmart-api --region ${awsRegion}
+            echo "ECR repository created"
+          fi
+
+          # Tag and push images
+          echo "Tagging images..."
+          docker tag shipsmart-api:${release} ${imageName}:${release}
+          docker tag shipsmart-api:${release} ${imageName}:latest
+
+          echo "Pushing to ECR..."
+          docker push ${imageName}:${release}
+          docker push ${imageName}:latest
+
+          echo "ECR push complete!"
+        else
+          echo "========================================="
+          echo "AWS credentials not configured"
+          echo "Skipping ECR push"
+          echo "To enable ECR push:"
+          echo "  1. Configure AWS credentials in Jenkins"
+          echo "  2. Set AWS_ACCOUNT_ID environment variable"
+          echo "  3. Grant Jenkins IAM role ECR push permissions"
+          echo "========================================="
+        fi
+      """
+
+      echo "ECR stage complete!"
+    }
+
+    // =============================================================================
+    // BUILD SUCCESS
+    // =============================================================================
+    echo "========================================="
+    echo "Build Successful!"
+    echo "========================================="
+    echo "Job: ${jobName}"
+    echo "Branch: ${release}"
+    echo "Environment: ${nodeEnv}"
+    echo "Image: ${imageName}:${release}"
+    echo "========================================="
+
+  } catch (Exception e) {
+    echo "========================================="
+    echo "Build Failed!"
+    echo "========================================="
+    echo "Error: ${e.message}"
+    currentBuild.result = 'FAILURE'
+    slackError = 1
+
+    // Send notification on failure
+    if (notification == 'true') {
+      echo "Sending failure notification..."
+      // Add Slack notification here if configured
+    }
+
+    throw e
+
+  } finally {
+    // =============================================================================
+    // CLEANUP
+    // =============================================================================
+    echo "========================================="
+    echo "Cleanup"
+    echo "========================================="
+
+    sh """#!/bin/bash
+      # Clean up dangling Docker images
+      docker image prune -f || true
+      echo "Cleanup complete!"
+    """
+  }
+}

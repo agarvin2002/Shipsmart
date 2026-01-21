@@ -265,31 +265,194 @@ See testing guidelines in [.claude/CLAUDE.md](.claude/CLAUDE.md)
 
 ---
 
-## 🚢 Deployment
+## 🚢 Production Deployment
 
-### Production Checklist
+### Architecture Overview
 
-- [ ] Update `jwt.secret` (32+ characters)
-- [ ] Update `encryption.key` (exactly 32 characters)
-- [ ] Restrict CORS origins (remove `*`)
-- [ ] Update carrier URLs to production
-- [ ] Enable HTTPS (use Nginx reverse proxy)
-- [ ] Set up monitoring (New Relic, Datadog)
-- [ ] Configure log aggregation
-- [ ] Run migrations on production DB
+The application uses a **single-container production architecture** with:
+- **Nginx** - Reverse proxy, rate limiting, SSL termination
+- **Node.js 22** - Runtime environment
+- **PM2** - Process management for API, worker, and arena processes
 
-### Process Management
+This architecture mirrors the production deployment pattern used in enterprise systems.
+
+### Docker Production Setup
+
+#### Dockerfile Features
+
+The production [Dockerfile](Dockerfile) includes:
+
+1. **Base Image:** `nginx:alpine` with Node.js 22 installed
+2. **Package Manager:** Yarn 3.6.1 via Corepack (matches package.json specification)
+3. **Native Module Handling:** Automatic rebuild of bcrypt and msgpackr-extract for correct architecture
+4. **Database Migrations:** Runs automatically during build
+5. **Environment-based Config:** Nginx configuration per environment (development, staging, production)
+6. **PM2 Process Manager:** Manages all Node.js processes inside the container
+
+#### Building Production Image
 
 ```bash
-# Install PM2
-npm install -g pm2
+# Build production image
+docker build -t shipsmart-api:latest .
 
-# Start services
-pm2 start service/bin/server --name shipsmart-api
-pm2 start service/bin/worker --name shipsmart-worker
-pm2 save
-pm2 startup
+# Build with specific environment
+docker build --build-arg NODE_ENV=production -t shipsmart-api:production .
+
+# Run production container locally
+docker run -p 80:80 -p 3000:3000 -p 3050:3050 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/db \
+  -e REDIS_URL=redis://host:6379 \
+  shipsmart-api:latest
 ```
+
+### Process Management with PM2
+
+The [pm2.sh](pm2.sh) script manages all services inside the Docker container:
+
+**Processes Started:**
+- `server` - Express API server (port 3001, proxied via Nginx on port 80)
+- `worker` - Background job processor (Bull queues)
+- `arena` - Bull Arena UI for job monitoring (port 3050)
+
+**Features:**
+- Auto-restart on failure
+- Graceful shutdown handling
+- Log rotation and management
+- Process monitoring
+
+### Nginx Reverse Proxy
+
+Environment-specific Nginx configurations:
+- [nginx/nginx.development.conf](nginx/nginx.development.conf) - Permissive rate limits
+- [nginx/nginx.staging.conf](nginx/nginx.staging.conf) - Moderate restrictions
+- [nginx/nginx.production.conf](nginx/nginx.production.conf) - Strict security
+
+**Production Features:**
+- Rate limiting: 10 req/s for API, 5 req/min for auth endpoints
+- Security headers (X-Frame-Options, CSP, X-Content-Type-Options)
+- Gzip compression
+- Connection limits (10 concurrent per IP)
+- Health check endpoint (no rate limit): `/api/health`
+- SSL/TLS termination (when certificates configured)
+
+### Production Deployment Checklist
+
+#### Pre-Deployment Security
+- [ ] Update `jwt.secret` (32+ characters, use secure random generator)
+- [ ] Update `encryption.key` (exactly 32 characters, use secure random generator)
+- [ ] Restrict CORS origins (remove `*`, whitelist production domains)
+- [ ] Enable Helmet middleware for security headers
+- [ ] Review Nginx security headers configuration
+- [ ] Verify carrier credential encryption is working
+- [ ] Audit logging to prevent sensitive data exposure
+
+#### Infrastructure
+- [ ] Provision database (RDS PostgreSQL recommended)
+- [ ] Provision Redis cache (ElastiCache recommended)
+- [ ] Set up Docker container registry (ECR recommended)
+- [ ] Configure load balancer with health checks
+- [ ] Set up SSL/TLS certificates (ACM or Let's Encrypt)
+- [ ] Configure DNS records
+- [ ] Set up VPC and security groups
+
+#### Configuration
+- [ ] Update carrier API URLs to production endpoints
+- [ ] Configure production database connection
+- [ ] Configure production Redis connection
+- [ ] Set up environment variables securely (AWS Secrets Manager)
+- [ ] Enable HTTPS redirect (uncomment in nginx.production.conf)
+- [ ] Set up S3 buckets for config storage
+
+#### Operations
+- [ ] Run database migrations: `yarn db:migrate`
+- [ ] Set up monitoring (CloudWatch, Datadog, New Relic)
+- [ ] Configure log aggregation (CloudWatch Logs)
+- [ ] Set up error tracking (Sentry)
+- [ ] Configure backup strategy for database
+- [ ] Document rollback procedure
+- [ ] Set up deployment pipeline (Jenkins, GitHub Actions)
+- [ ] Test health check endpoint: `curl http://your-domain/api/health`
+
+### CI/CD Pipeline (Jenkins)
+
+The project uses **separate Jenkins jobs** for CI (build) and CD (deploy):
+
+#### **Job 1: CI Pipeline** (`jenkinsFile`)
+Builds and pushes Docker images to AWS ECR:
+```
+1. Checkout from GitHub
+2. Install Node.js 22 + Yarn
+3. Pull configs from S3
+4. Install dependencies (make dev-clean-install)
+5. Lint & test
+6. Build Docker image
+7. Push to ECR
+```
+
+**Job Name:** `shipsmart-api-ci`
+**Trigger:** GitHub webhook on push
+
+#### **Job 2: CD Pipeline** (`jenkinsFile.deploy`)
+Deploys ECR images to AWS ECS:
+```
+1. Verify image exists in ECR
+2. Pre-deployment checks
+3. Run deploy script:
+   - Update ECS task definition
+   - Trigger rolling deployment
+4. Verify deployment success
+```
+
+**Job Name:** `shipsmart-api-deploy`
+**Trigger:** Manual or automatic from CI job
+
+**Deployment Script:** `scripts/deploy.sh <environment> <image_tag>`
+
+**AWS Resources Required:**
+- ECR Repository: `shipsmart-api`
+- S3 Bucket: `s3://shipsmart-config`
+- ECS Clusters: `shipsmart-{env}-cluster`
+- ECS Services: `shipsmart-{env}-service`
+- IAM Role: Jenkins with ECR push, S3 read, ECS update permissions
+
+**Manual Deployment:**
+```bash
+bash scripts/deploy.sh production main
+```
+
+### Local Production Testing
+
+Before deploying to AWS, validate the production Docker setup locally:
+
+```bash
+# Automated testing (recommended)
+chmod +x scripts/test-production-local.sh
+./scripts/test-production-local.sh
+
+# Manual testing
+docker-compose -f docker-compose.production-test.yml build
+docker-compose -f docker-compose.production-test.yml up -d
+
+# Verify health
+curl http://localhost/api/health
+
+# Check PM2 status
+docker exec shipsmart-api-prod-test pm2 status
+
+# Cleanup
+docker-compose -f docker-compose.production-test.yml down
+```
+
+**What Gets Tested:**
+- ✅ Production Dockerfile build with Nginx + Node 22 + PM2
+- ✅ PM2 process management (server, worker, arena)
+- ✅ Nginx reverse proxy and rate limiting
+- ✅ PostgreSQL and Redis connectivity
+- ✅ Security headers configuration
+- ✅ Health check endpoint
+- ✅ Graceful restart behavior
+
+See [Production Testing Guide](docs/PRODUCTION-TESTING.md) for complete testing documentation.
 
 ---
 

@@ -1,0 +1,52 @@
+# ShipSmart AI API - Terraform .gitignore
+#
+# CRITICAL: Prevent sensitive files from being committed to git
+# This includes actual secrets, state files, and provider plugins
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files (contain sensitive data and resource IDs)
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files (contain actual secrets)
+*.tfvars
+
+# EXCEPT for .example files (templates without actual secrets)
+!*.tfvars.example
+
+# Ignore override files as they are usually used to override resources locally
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Lock file (some teams commit this, some don't - adjust as needed)
+# Uncomment if you want to ignore the lock file:
+# .terraform.lock.hcl
+
+# Ignore Mac system files
+.DS_Store
+
+# Ignore editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore plan files (may contain sensitive data)
+*.tfplan
+*.tfplan.json
+
+# Ignore any generated documentation
+*.md.backup
