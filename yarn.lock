@@ -1061,6 +1061,7 @@ __metadata:
     helmet: ^8.1.0
     jsonwebtoken: ^9.0.2
     multer: ^2.0.2
+    node-cron: ^4.2.1
     nodemon: ^2.0.7
     passport: ^0.7.0
     passport-jwt: ^4.0.1
@@ -5005,6 +5006,13 @@ __metadata:
   dependencies:
     node-gyp: latest
   checksum: 2508bd2d2981945406243a7bd31362fc7af8b70b8b4d65f869c61731800058fb818cc2fd36c8eac714ddd0e568cc85becf5e165cebbdf7b5024d5151bbc75ea1
+  languageName: node
+  linkType: hard
+
+"node-cron@npm:^4.2.1":
+  version: 4.2.1
+  resolution: "node-cron@npm:4.2.1"
+  checksum: 961e18a452f2d0cd12cde1dfa5897d788ebbba259861ceca6b717ab80a0962f916be10584381647d6e20415620c17bbdc9238b3d601c7675afcb6c157fed9d97
   languageName: node
   linkType: hard
 
