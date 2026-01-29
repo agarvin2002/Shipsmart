@@ -34,6 +34,7 @@ class FedexProxy extends BaseCarrierProxy {
           client_id,
           client_secret,
         }).toString(),
+        operation: 'authenticate', // For carrier API logging
       });
 
       logger.info('[FedexProxy] Authentication successful');
@@ -57,6 +58,7 @@ class FedexProxy extends BaseCarrierProxy {
           'x-locale': 'en_US',
         },
         data: rateRequest,
+        operation: 'get_rates', // For carrier API logging
       });
 
       logger.info('[FedexProxy] Rates fetched successfully', {

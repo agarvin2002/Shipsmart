@@ -38,6 +38,7 @@ class UpsProxy extends BaseCarrierProxy {
         data: new URLSearchParams({
           grant_type: 'client_credentials',
         }).toString(),
+        operation: 'authenticate', // For carrier API logging
       });
 
       logger.info('[UpsProxy] Authentication successful');
@@ -62,6 +63,7 @@ class UpsProxy extends BaseCarrierProxy {
           'transactionSrc': 'ShipSmartAI',
         },
         data: rateRequest,
+        operation: 'get_rates', // For carrier API logging
       });
 
       logger.info('[UpsProxy] Rates fetched successfully', {

@@ -32,6 +32,7 @@ class UspsProxy extends BaseCarrierProxy {
           client_secret,
           grant_type: 'client_credentials',
         },
+        operation: 'authenticate', // For carrier API logging
       });
 
       logger.info('[UspsProxy] Authentication successful');
@@ -58,6 +59,7 @@ class UspsProxy extends BaseCarrierProxy {
           'Content-Type': 'application/json',
         },
         data: rateRequest,
+        operation: 'get_rates', // For carrier API logging
       });
 
       logger.info('[UspsProxy] Rates fetched successfully', {
@@ -84,6 +86,7 @@ class UspsProxy extends BaseCarrierProxy {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
+          operation: 'get_transit_time', // For carrier API logging
         }
       );
 
