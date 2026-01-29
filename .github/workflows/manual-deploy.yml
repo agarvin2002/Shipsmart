@@ -1,0 +1,125 @@
+name: Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+        default: 'development'
+      image_tag:
+        description: 'Docker image tag to deploy (e.g., main, develop, v1.0.0, commit SHA)'
+        required: true
+        type: string
+        default: 'main'
+      skip_verification:
+        description: 'Skip image verification (use with caution)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: shipsmart-api
+
+jobs:
+  verify-inputs:
+    name: Verify Deployment Inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate inputs
+        run: |
+          echo "### 📋 Deployment Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag**: \`${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Skip Verification**: \`${{ inputs.skip_verification }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.environment }}" == "production" ]; then
+            echo "⚠️ **WARNING**: Deploying to PRODUCTION environment" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Production deployment warning
+        if: inputs.environment == 'production'
+        run: |
+          echo "================================================"
+          echo "⚠️  WARNING: PRODUCTION DEPLOYMENT"
+          echo "================================================"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Image Tag: ${{ inputs.image_tag }}"
+          echo ""
+          echo "This deployment will affect production users."
+          echo "Ensure all tests have passed and changes are reviewed."
+          echo "================================================"
+
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    needs: verify-inputs
+    uses: ./.github/workflows/cd.yml
+    secrets: inherit
+    with:
+      environment: ${{ inputs.environment }}
+      image_tag: ${{ inputs.image_tag }}
+
+  summary:
+    name: Deployment Summary
+    needs: [verify-inputs, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Generate Summary
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "### ✅ Manual Deployment Successful" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "**Image Tag**: \`${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "🚀 Application deployed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Next Steps**:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Verify deployment health at the environment URL" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check application logs for any errors" >> $GITHUB_STEP_SUMMARY
+            echo "3. Test critical functionality" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.deploy.result }}" == "failure" ]; then
+            echo "### ❌ Manual Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "**Image Tag**: \`${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Action Required**:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Check workflow logs for error details" >> $GITHUB_STEP_SUMMARY
+            echo "2. Verify the image tag exists in ECR" >> $GITHUB_STEP_SUMMARY
+            echo "3. Check AWS ECS service status" >> $GITHUB_STEP_SUMMARY
+            echo "4. Consider rolling back to previous working version" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⏸️ Manual Deployment Cancelled" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Deployment was cancelled or skipped." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Rollback Instructions
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "### 🔄 Rollback Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To rollback to a previous version:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to Actions → Manual Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "2. Select the same environment: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Enter a known good image tag (e.g., previous commit SHA)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Run the workflow" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Find previous image tags**:" >> $GITHUB_STEP_SUMMARY
+          echo "- Check recent successful CI workflow runs" >> $GITHUB_STEP_SUMMARY
+          echo "- Review git commit history for SHAs" >> $GITHUB_STEP_SUMMARY
+          echo "- List ECR images: \`aws ecr list-images --repository-name ${{ env.ECR_REPOSITORY }}\`" >> $GITHUB_STEP_SUMMARY
