@@ -106,7 +106,7 @@ class AuthService {
 
       await this.userRepository.setResetToken(user.id, token, expiresAt);
 
-      logger.info(`Password reset token generated for user ${user.id}: ${token}`);
+      logger.info('Password reset token generated', { userId: user.id });
 
       return { message: 'If email exists, password reset link has been sent' };
     } catch (error) {
