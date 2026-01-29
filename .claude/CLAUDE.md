@@ -1446,46 +1446,51 @@ location /api/ { ... }
 - Uncomment for production with real certificates
 - Use ACM (AWS) or Let's Encrypt for certificates
 
-### Deployment Workflow (Separate CI/CD Jobs)
+### Deployment Workflow (GitHub Actions CI/CD)
 
-**Architecture:** Separate Jenkins jobs for CI (build) and CD (deploy)
+**Architecture:** GitHub Actions workflows for automated CI/CD
 
-**Important:** Jenkins is configured for AWS deployment only.
+**Important:** All deployments managed through GitHub Actions, no self-hosted infrastructure required.
 
-#### **Job 1: CI Pipeline (jenkinsFile)**
+#### **Workflow 1: CI - Build and Push** (`.github/workflows/ci.yml`)
 
 Builds and pushes Docker images to ECR:
 
 ```
 Developer Push → GitHub
     ↓
-Jenkins Webhook Triggered (shipsmart-api-ci)
+GitHub Actions Triggered (automatic)
     ↓
-1. Checkout code from GitHub
-2. Install Node.js 22 + Yarn (pre-process.sh)
+1. Checkout code
+2. Setup Node.js 22 + Yarn 3.6.1 (Corepack)
 3. Pull environment configs from AWS S3
 4. Run: make dev-clean-install (yarn install)
 5. Run: yarn lint & yarn test
 6. Build Docker image with NODE_ENV arg
 7. Login to AWS ECR
-8. Push image to ECR (tagged with branch name)
+8. Push image to ECR (tagged with branch name + git SHA)
     ↓
 Image available in ECR ✅
 ```
 
-**CI Parameters:**
-- `ghprbSourceBranch`: Branch to build (e.g., 'main', 'develop')
-- `NODE_ENV`: 'development', 'staging', or 'production'
-- `NOTIFICATION`: Enable Slack notifications (default: false)
+**Triggers:**
+- Push to `main`, `develop`, `feature/*`
+- Pull requests to `main`, `develop`
+- Manual dispatch (with environment selection)
 
-#### **Job 2: CD Pipeline (jenkinsFile.deploy)**
+**Image Tags:**
+- Branch name (e.g., `main`, `develop`, `feature-xyz`)
+- Git SHA (first 7 characters for traceability)
+- `latest` (for main branch only)
+
+#### **Workflow 2: CD - Deploy to ECS** (`.github/workflows/cd.yml`)
 
 Deploys ECR images to ECS:
 
 ```
-Manual trigger or automatic from CI
+Manual trigger or called by other workflows
     ↓
-Jenkins Deploy Job (shipsmart-api-deploy)
+GitHub Actions CD Workflow
     ↓
 1. Verify image exists in ECR
 2. Pre-deployment checks
@@ -1493,7 +1498,7 @@ Jenkins Deploy Job (shipsmart-api-deploy)
    - Get current task definition
    - Register new task definition with new image
    - Update ECS service (rolling update)
-4. Verify deployment success
+4. Wait for ECS service to stabilize
     ↓
 ECS pulls new image from ECR
     ↓
@@ -1502,23 +1507,65 @@ Rolling update (zero downtime)
 Health check verification ✅
 ```
 
-**CD Parameters:**
-- `NODE_ENV`: Environment to deploy to
-- `IMAGE_TAG`: Docker image tag to deploy (e.g., 'main', 'v1.0.0')
-- `NOTIFICATION`: Enable Slack notifications (default: false)
+**Inputs:**
+- `environment`: 'development' | 'staging' | 'production'
+- `image_tag`: Docker image tag to deploy (e.g., 'main', 'v1.0.0')
+
+**GitHub Environments:**
+- `development`: Auto-deploy, no approval
+- `staging`: Auto-deploy, no approval
+- `production`: Requires manual approval, restricted to `main` branch
+
+#### **Workflow 3: CI/CD - Auto Deploy** (`.github/workflows/ci-cd.yml`)
+
+Automated build and deployment:
+
+```
+Push to main → Build → Deploy to production (with approval)
+Push to develop → Build → Deploy to staging (auto)
+```
+
+#### **Workflow 4: Manual Deploy** (`.github/workflows/manual-deploy.yml`)
+
+On-demand deployment with any image tag:
+
+**Use Cases:**
+- Deploy specific versions for testing
+- Rollback to previous working version
+- Hotfix deployment
+- Testing deployment process
+
+**See:** `.github/workflows/README.md` for detailed workflow documentation
+
+### GitHub Actions Setup
+
+**Required GitHub Secrets:**
+```
+AWS_ACCESS_KEY_ID       # IAM user access key
+AWS_SECRET_ACCESS_KEY   # IAM user secret key
+```
+
+**Recommended: GitHub OIDC** (more secure than long-lived credentials)
+```yaml
+# No secrets needed - uses IAM role assumption
+role-to-assume: arn:aws:iam::ACCOUNT_ID:role/GitHubActionsRole
+```
+
+**IAM Permissions Required:**
+- ECR: Push images to `shipsmart-api` repository
+- S3: Read access to `s3://shipsmart-config`
+- ECS: Update services, register task definitions
 
 **AWS Resources Required:**
 - ECR Repository: `shipsmart-api` (us-east-1)
 - S3 Bucket: `s3://shipsmart-config`
 - ECS Cluster: `shipsmart-{env}-cluster`
 - ECS Service: `shipsmart-{env}-service`
-- IAM Role: Jenkins agent with ECR push, S3 read, and ECS update permissions
-
-**See:** `scripts/README.md` for detailed setup instructions
+- IAM Role: GitHub Actions with ECR push, S3 read, ECS update permissions
 
 ### Environment Configuration Management
 
-**Strategy:** Single S3 bucket with all configs (marauders-map pattern)
+**Strategy:** Single S3 bucket with all configs
 
 ```
 s3://shipsmart-config/
@@ -1528,7 +1575,7 @@ s3://shipsmart-config/
   └── config.localhost.json (for local dev only)
 ```
 
-**Jenkins pulls all configs recursively:**
+**GitHub Actions pulls all configs:**
 ```bash
 aws s3 cp s3://shipsmart-config/ config/ --recursive
 ```
@@ -1622,18 +1669,18 @@ cannot load certificate "/etc/nginx/ssl/cert.pem"
 
 **Phase 1 & 2 (COMPLETED):**
 - ✅ Production Dockerfile with Nginx + Node 22 + PM2
-- ✅ PM2 startup script (pm2.sh) matching marauders-map
+- ✅ PM2 startup script (pm2.sh)
 - ✅ Nginx configs per environment
 - ✅ Native module rebuilding
 - ✅ Makefile for build automation
-- ✅ Jenkins pipeline structure (jenkinsFile)
+- ✅ GitHub Actions workflows (CI, CD, CI/CD, Manual Deploy)
 
 **Phase 3 & 4 (PENDING - Requires AWS):**
 - ⏳ Terraform IaC for AWS provisioning
 - ⏳ ECR repository setup
 - ⏳ S3 config bucket strategy
 - ⏳ CloudWatch logging integration
-- ⏳ Jenkins pipeline execution
+- ⏳ GitHub Actions execution (requires AWS resources)
 - ⏳ Production deployment
 
 ### Best Practices
