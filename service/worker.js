@@ -4,6 +4,8 @@ const workerClient = require('./worker-client');
 const { WorkerJobs } = require('@shipsmart/constants');
 const CheckCreationConsumer = require('./workers/consumers/check-creation-consumer');
 const RateFetchConsumer = require('./workers/consumers/rate-fetch-consumer');
+const ApiLogConsumer = require('./workers/consumers/api-log-consumer');
+const CarrierApiLogConsumer = require('./workers/consumers/carrier-api-log-consumer');
 
 const SHUTDOWN_TIMEOUT = 30000;
 let isShuttingDown = false;
@@ -11,6 +13,9 @@ let isShuttingDown = false;
 const start = async () => {
   require('events').EventEmitter.defaultMaxListeners = 15;
   require('./models');
+
+  // Initialize scheduled jobs
+  require('./jobs/log-cleanup-job');
 
   const checkConcurrency = 2;
   const rateFetchConcurrency = 5;
@@ -29,6 +34,23 @@ const start = async () => {
 
   logger.info(`Worker subscribed to ${WorkerJobs.RATE_FETCH} queue with concurrency ${rateFetchConcurrency}`);
 
+  // API logging queues (lower priority, lower concurrency)
+  const apiLogConcurrency = 3;
+  const apiLogQueue = workerClient.getQueue(WorkerJobs.API_LOG);
+  apiLogQueue.process(apiLogConcurrency, async (job) => {
+    return await ApiLogConsumer.perform(job);
+  });
+
+  logger.info(`Worker subscribed to ${WorkerJobs.API_LOG} queue with concurrency ${apiLogConcurrency}`);
+
+  const carrierApiLogConcurrency = 3;
+  const carrierApiLogQueue = workerClient.getQueue(WorkerJobs.CARRIER_API_LOG);
+  carrierApiLogQueue.process(carrierApiLogConcurrency, async (job) => {
+    return await CarrierApiLogConsumer.perform(job);
+  });
+
+  logger.info(`Worker subscribed to ${WorkerJobs.CARRIER_API_LOG} queue with concurrency ${carrierApiLogConcurrency}`);
+
   const gracefulShutdown = async (signal) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
@@ -43,7 +65,9 @@ const start = async () => {
     try {
       const queues = [
         workerClient.getQueue(WorkerJobs.CHECK_CREATION),
-        workerClient.getQueue(WorkerJobs.RATE_FETCH)
+        workerClient.getQueue(WorkerJobs.RATE_FETCH),
+        workerClient.getQueue(WorkerJobs.API_LOG),
+        workerClient.getQueue(WorkerJobs.CARRIER_API_LOG)
       ];
 
       // Pause queues to stop accepting new jobs

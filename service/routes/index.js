@@ -7,6 +7,7 @@ const addressRoutes = require('./address');
 const carrierRoutes = require('./carrier');
 const carrierCredentialRoutes = require('./carrier-credential');
 const rateRoutes = require('./rate');
+const logRoutes = require('./log');
 const db = require('../models');
 const config = require('@shipsmart/env');
 
@@ -85,5 +86,6 @@ router.use('/', addressRoutes);
 router.use('/', carrierRoutes);
 router.use('/', carrierCredentialRoutes);
 router.use('/', rateRoutes);
+router.use('/', logRoutes);
 
 module.exports = router;

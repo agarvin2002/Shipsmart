@@ -2,6 +2,10 @@ const CarrierRouter = require('../../lib/carrier-router');
 const RedisWrapper = require('@shipsmart/redis');
 const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 const { Rate, RateHistory, UserAddress } = require('../../models');
+const cls = require('cls-hooked');
+
+// Get the existing CLS namespace
+const namespace = cls.getNamespace('shipsmart_sequel_trans');
 
 class CarrierRateOrchestrator {
   constructor() {
@@ -13,6 +17,18 @@ class CarrierRateOrchestrator {
   async getRatesForShipment(userId, shipmentData, options = {}) {
     try {
       logger.info('[CarrierRateOrchestrator] Getting rates for shipment', { userId });
+
+      // CRITICAL: Set userId and shipmentId in CLS context for carrier logging
+      if (namespace) {
+        namespace.set('userId', userId);
+
+        // Extract shipment_id from shipmentData if available
+        const shipmentId = shipmentData?.shipment_id || shipmentData?.id;
+        if (shipmentId) {
+          namespace.set('shipmentId', shipmentId);
+          logger.debug('[CarrierRateOrchestrator] Set shipmentId in CLS context', { shipmentId });
+        }
+      }
 
       // 1. Build cache key
       const cacheKey = this.buildCacheKey(shipmentData);
