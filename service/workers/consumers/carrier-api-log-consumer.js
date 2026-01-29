@@ -1,6 +1,6 @@
+/* global logger */
 const { namespace } = require('../../models');
 const CarrierApiLogRepository = require('../../repositories/carrier-api-log-repository');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 /**
  * CarrierApiLogConsumer

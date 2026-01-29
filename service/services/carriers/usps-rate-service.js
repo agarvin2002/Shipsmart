@@ -1,7 +1,7 @@
+/* global logger */
 const BaseCarrierRateService = require('./base-carrier-rate-service');
 const UspsProxy = require('../../lib/carrier-proxies/usps-proxy');
 const UspsRateRequestBuilder = require('../../lib/request-builders/usps-rate-request-builder');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class UspsRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {

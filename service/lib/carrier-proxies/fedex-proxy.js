@@ -1,6 +1,6 @@
+/* global logger */
 const BaseCarrierProxy = require('./base-carrier-proxy');
 const config = require('@shipsmart/env');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class FedexProxy extends BaseCarrierProxy {
   constructor(carrierConfig = null) {

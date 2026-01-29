@@ -1,6 +1,6 @@
+/* global logger */
 const { namespace } = require('../../models');
 const RateHistoryRepository = require('../../repositories/rate-history-repository');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class RateHistoryConsumer {
   

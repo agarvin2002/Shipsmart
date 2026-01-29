@@ -1,6 +1,6 @@
+/* global logger */
 const CarrierRouter = require('../../lib/carrier-router');
 const RedisWrapper = require('@shipsmart/redis');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 const { Rate, RateHistory, UserAddress } = require('../../models');
 const cls = require('cls-hooked');
 
