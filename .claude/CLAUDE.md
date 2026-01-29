@@ -1450,7 +1450,7 @@ location /api/ { ... }
 
 **Architecture:** Separate Jenkins jobs for CI (build) and CD (deploy)
 
-**Important:** Jenkins is configured for AWS deployment only. LocalStack is for local development via docker-compose.
+**Important:** Jenkins is configured for AWS deployment only.
 
 #### **Job 1: CI Pipeline (jenkinsFile)**
 
@@ -1539,24 +1539,6 @@ aws s3 cp s3://shipsmart-config/ config/ --recursive
 - Version history and rollback
 - Secure storage with IAM roles
 - Single bucket simplifies IAM permissions
-
-### Local Development with LocalStack
-
-**LocalStack is for local development ONLY** (not used by Jenkins)
-
-**Setup:**
-```bash
-# Start LocalStack via docker-compose
-yarn docker:up
-
-# LocalStack automatically creates S3 bucket and uploads configs
-# See: localstack-init/01-setup-buckets-and-ecr.sh
-```
-
-**LocalStack provides:**
-- S3 mock at `http://localhost:4566`
-- Bucket: `s3://shipsmart-config` with test configs
-- Used by local docker-compose, NOT by Jenkins
 
 ### Troubleshooting Production Deployment
 

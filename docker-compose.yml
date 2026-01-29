@@ -45,26 +45,6 @@ services:
     networks:
       - shipsmart-network
 
-  # LocalStack - AWS Service Emulation (S3 for Jenkins config)
-  # Note: ECR not available in free tier, using local registry instead
-  localstack:
-    image: localstack/localstack:latest
-    container_name: shipsmart-localstack
-    environment:
-      - SERVICES=s3
-      - DEBUG=1
-    ports:
-      - "4566:4566"   # All AWS services endpoint
-    volumes:
-      - ./localstack-init:/etc/localstack/init/ready.d
-    networks:
-      - shipsmart-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Docker Registry - Local container registry (replaces ECR)
   registry:
     image: registry:2
@@ -95,8 +75,6 @@ services:
     networks:
       - shipsmart-network
     depends_on:
-      localstack:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
