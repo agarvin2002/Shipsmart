@@ -1,7 +1,7 @@
+/* global logger */
 const BaseCarrierRateService = require('./base-carrier-rate-service');
 const FedexProxy = require('../../lib/carrier-proxies/fedex-proxy');
 const FedexRateRequestBuilder = require('../../lib/request-builders/fedex-rate-request-builder');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class FedexRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {

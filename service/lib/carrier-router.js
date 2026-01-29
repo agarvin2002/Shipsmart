@@ -1,8 +1,8 @@
+/* global logger */
 const { CarrierCredential, Carrier, CarrierService } = require('../models');
 const FedexRateService = require('../services/carriers/fedex-rate-service');
 const UpsRateService = require('../services/carriers/ups-rate-service');
 const UspsRateService = require('../services/carriers/usps-rate-service');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class CarrierRouter {
   

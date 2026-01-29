@@ -1,6 +1,6 @@
+/* global logger */
 const { namespace } = require('../../models');
 const CarrierRateOrchestrator = require('../../services/carriers/carrier-rate-orchestrator');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 
 class RateCacheRefreshConsumer {
   
