@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 // Increase max listeners to prevent warning during hot reloads and multiple event handlers
 process.setMaxListeners(20);
 
-global.logger = require('@shipsmart/logger').application('service');
+global.logger = require('@shipsmart/logger').application('api');
 
 const initializeLogger = require('./helpers/logger-initializer');
 initializeLogger();

@@ -1,4 +1,4 @@
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
+/* global logger */
 const CryptoHelper = require('../../helpers/crypto-helper');
 
 class BaseCarrierRateService {

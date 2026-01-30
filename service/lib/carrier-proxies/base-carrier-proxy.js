@@ -1,5 +1,5 @@
+/* global logger */
 const axios = require('axios');
-const logger = require('@shipsmart/logger').application('shipsmart-ai-api');
 const cls = require('cls-hooked');
 const { getWorkerProducer } = require('../../workers/utils/producer');
 const { WorkerJobs } = require('@shipsmart/constants');
