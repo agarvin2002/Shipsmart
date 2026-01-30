@@ -10,16 +10,10 @@ const rateRoutes = require('./rate');
 const logRoutes = require('./log');
 const db = require('../models');
 const config = require('@shipsmart/env');
+const { RedisClient } = require('@shipsmart/redis');
 
-// Redis client - get from helpers or initialize
-let redisClient;
-try {
-  const redisHelper = require('../helpers/redis-helper');
-  redisClient = redisHelper.getClient();
-} catch (error) {
-  // Redis helper might not be available yet
-  redisClient = null;
-}
+// Redis client from @shipsmart/redis package
+const redisClient = RedisClient;
 
 // Enhanced health check endpoint with DB and Redis status
 router.get('/health', async (req, res) => {
