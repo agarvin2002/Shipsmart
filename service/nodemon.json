@@ -23,6 +23,7 @@
     "NODE_ENV": "development"
   },
   "ext": "js json",
-  "delay": 2000,
-  "signal": "SIGTERM"
+  "delay": 4000,
+  "signal": "SIGTERM",
+  "killTimeout": 10000
 }

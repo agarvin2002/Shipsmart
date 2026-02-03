@@ -12,10 +12,10 @@ let isShuttingDown = false;
 
 const start = async () => {
   require('events').EventEmitter.defaultMaxListeners = 15;
-  require('./models');
+  const db = require('./models');
 
   // Initialize scheduled jobs
-  require('./jobs/log-cleanup-job');
+  const logCleanupJob = require('./jobs/log-cleanup-job');
 
   const checkConcurrency = 2;
   const rateFetchConcurrency = 5;
@@ -63,6 +63,10 @@ const start = async () => {
     }, SHUTDOWN_TIMEOUT);
 
     try {
+      // Step 1: Stop scheduled cron jobs first
+      logger.info('Stopping scheduled jobs...');
+      logCleanupJob.stop();
+
       const queues = [
         workerClient.getQueue(WorkerJobs.CHECK_CREATION),
         workerClient.getQueue(WorkerJobs.RATE_FETCH),
@@ -70,11 +74,11 @@ const start = async () => {
         workerClient.getQueue(WorkerJobs.CARRIER_API_LOG)
       ];
 
-      // Pause queues to stop accepting new jobs
+      // Step 2: Pause queues to stop accepting new jobs
       logger.info('Pausing all queues...');
       await Promise.all(queues.map(q => q.pause(true, true)));
 
-      // Wait for active jobs to complete
+      // Step 3: Wait for active jobs to complete
       logger.info('Waiting for active jobs...');
       await Promise.all(queues.map(async (queue) => {
         let activeJobs = await queue.getActiveCount();
@@ -87,13 +91,33 @@ const start = async () => {
         }
       }));
 
+      // Step 4: Close Bull queues and Redis connections
       await workerClient.close();
+
+      // Step 5: Close database connections
+      logger.info('Closing database connections...');
+      await db.sequelize.close();
+      logger.info('Database connections closed');
+
       clearTimeout(forceExitTimeout);
       logger.info('Worker shut down gracefully');
+
+      // Wait for Winston to flush logs, then ensure clean terminal exit
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Write final newline to ensure clean shell prompt
+      process.stdout.write('\n');
+
+      //Allow final write to complete
+      await new Promise(resolve => setImmediate(resolve));
       process.exit(0);
     } catch (err) {
       logger.error(`Shutdown error: ${err.message}`);
       clearTimeout(forceExitTimeout);
+
+      // Wait for Winston to flush logs before exit
+      await new Promise(resolve => setTimeout(resolve, 200));
       process.exit(1);
     }
   };
@@ -102,7 +126,10 @@ const start = async () => {
   process.once('SIGINT', () => gracefulShutdown('SIGINT'));
 };
 
-start().catch((error) => {
+start().catch(async (error) => {
   logger.error(`Worker failed to start: ${error.message}`, { stack: error.stack });
+
+  // Wait for Winston to flush logs before exit
+  await new Promise(resolve => setTimeout(resolve, 200));
   process.exit(1);
 });

@@ -27,7 +27,7 @@ logger.info('[LogCleanupJob] Initializing log cleanup job', {
 });
 
 // Schedule the cleanup job
-cron.schedule(schedule, async () => {
+const cleanupTask = cron.schedule(schedule, async () => {
   logger.info('[LogCleanupJob] Starting scheduled cleanup');
 
   try {
@@ -60,4 +60,13 @@ cron.schedule(schedule, async () => {
 
 logger.info('[LogCleanupJob] Log cleanup job scheduled successfully');
 
-module.exports = {};
+// Export task for graceful shutdown
+module.exports = {
+  cleanupTask,
+  stop: () => {
+    if (cleanupTask) {
+      cleanupTask.stop();
+      logger.info('[LogCleanupJob] Cron task stopped');
+    }
+  }
+};

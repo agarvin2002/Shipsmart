@@ -15,7 +15,10 @@
     "db:migrate:undo:all": "npx sequelize-cli db:migrate:undo:all",
     "db:migrate:status": "npx sequelize-cli db:migrate:status",
     "db:seed": "npx sequelize-cli db:seed:all",
-    "db:seed:undo": "npx sequelize-cli db:seed:undo:all"
+    "db:seed:undo": "npx sequelize-cli db:seed:undo:all",
+    "kill": "bash ../scripts/kill-port.sh 3001",
+    "kill:arena": "bash ../scripts/kill-port.sh 3050",
+    "kill:all": "bash ../scripts/kill-port.sh 3001 && bash ../scripts/kill-port.sh 3050"
   },
   "dependencies": {
     "@hapi/joi": "15.0.3",
