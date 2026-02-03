@@ -154,7 +154,17 @@ const server = app.listen(servicePort, () => {
 server.keepAliveTimeout = 65000;
 
 // Graceful shutdown handler
+let isShuttingDown = false;
+
 function gracefulShutdown(signal) {
+  // Prevent duplicate shutdown attempts
+  if (isShuttingDown) {
+    logger.warn(`Shutdown already in progress, ignoring ${signal}`);
+    return;
+  }
+  isShuttingDown = true;
+
+  const isDevelopment = process.env.NODE_ENV === 'development';
   logger.info(`${signal} received. Closing HTTP server gracefully...`);
 
   // Stop accepting new connections
@@ -165,22 +175,35 @@ function gracefulShutdown(signal) {
     db.sequelize.close()
       .then(() => {
         logger.info('Database connections closed');
-        // Add delay before exit to ensure port is fully released by OS
+
+        // Development: Fast shutdown for nodemon restarts
+        // Production: Delay to ensure port is fully released by OS
+        const exitDelay = isDevelopment ? 100 : 1000;
+
         setTimeout(() => {
+          logger.info('Graceful shutdown complete');
           process.exit(0);
-        }, 500);
+        }, exitDelay);
       })
       .catch((err) => {
         logger.error(`Error closing database: ${err.message}`);
-        process.exit(1);
+
+        // Give Winston time to flush logs before exit
+        setTimeout(() => {
+          process.exit(1);
+        }, 100);
       });
   });
 
-  // Force exit after 5 seconds if graceful shutdown fails
+  // Force exit timeout (longer in production for safety)
   const forceExitTimeout = setTimeout(() => {
     logger.error('Could not close connections in time, forcefully shutting down');
-    process.exit(1);
-  }, 5000);
+
+    // Give Winston time to flush logs before exit
+    setTimeout(() => {
+      process.exit(1);
+    }, 100);
+  }, isDevelopment ? 3000 : 8000);
 
   // Don't keep the process alive just for this timeout
   forceExitTimeout.unref();
