@@ -92,7 +92,7 @@ class AddressService {
         data.is_default = false;
       }
 
-      const updatedAddress = await this.addressRepository.update(id, data);
+      const updatedAddress = await this.addressRepository.update(id, userId, data);
       return updatedAddress;
     } catch (error) {
       logger.error(`Error updating address ${id}: ${error.stack}`);
@@ -107,7 +107,7 @@ class AddressService {
         return { error: 'Address not found' };
       }
 
-      return await this.addressRepository.delete(id);
+      return await this.addressRepository.delete(id, userId);
     } catch (error) {
       logger.error(`Error deleting address ${id}: ${error.stack}`);
       throw error;

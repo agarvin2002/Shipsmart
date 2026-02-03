@@ -113,7 +113,7 @@ class CarrierCredentialService {
         updateData.selected_service_ids = data.selected_service_ids;
       }
 
-      const updated = await this.credentialRepository.update(id, updateData);
+      const updated = await this.credentialRepository.update(id, userId, updateData);
 
       const credData = updated.toJSON();
       credData.client_id = CryptoHelper.decrypt(credData.client_id_encrypted);
@@ -137,7 +137,7 @@ class CarrierCredentialService {
         return { error: 'Credential not found' };
       }
 
-      return await this.credentialRepository.delete(id);
+      return await this.credentialRepository.delete(id, userId);
     } catch (error) {
       logger.error(`Error deleting credential ${id}: ${error.stack}`);
       throw error;
@@ -182,6 +182,7 @@ class CarrierCredentialService {
 
       await this.credentialRepository.updateValidationStatus(
         id,
+        userId,
         isValid ? 'valid' : 'invalid',
         new Date()
       );

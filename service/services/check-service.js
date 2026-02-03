@@ -1,14 +1,16 @@
 /* global logger */
-const { Check } = require('../models');
+const CheckRepository = require('../repositories/check-repository');
 const { s3Wrapper, S3KeyGenerator } = require('@shipsmart/s3');
 const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
 
 class CheckService {
+  constructor() {
+    this.checkRepository = new CheckRepository();
+  }
+
   async getAllChecks() {
     try {
-      const checks = await Check.findAll({
-        order: [['created_at', 'DESC']],
-      });
+      const checks = await this.checkRepository.findAll();
       return checks;
     } catch (error) {
       logger.error(`Error fetching all checks: ${error.stack}`);
@@ -36,7 +38,7 @@ class CheckService {
 
       // Cache MISS - fetch from database
       logger.info(`[cache_miss] Check ${id} not in cache, fetching from database`);
-      const check = await Check.findByPk(id);
+      const check = await this.checkRepository.findById(id);
 
       if (!check) {
         return { error: 'Check not found' };
@@ -68,7 +70,7 @@ class CheckService {
 
   async createCheck(data) {
     try {
-      const check = await Check.create({
+      const check = await this.checkRepository.create({
         name: data.name,
         description: data.description,
         status: data.status || 'active',
@@ -82,7 +84,7 @@ class CheckService {
 
   async updateCheck(id, data) {
     try {
-      const check = await Check.findByPk(id);
+      const check = await this.checkRepository.findById(id);
       if (!check) {
         return { error: 'Check not found' };
       }
@@ -102,7 +104,7 @@ class CheckService {
 
   async deleteCheck(id) {
     try {
-      const check = await Check.findByPk(id);
+      const check = await this.checkRepository.findById(id);
       if (!check) {
         return { error: 'Check not found' };
       }

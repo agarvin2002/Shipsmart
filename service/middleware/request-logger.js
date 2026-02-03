@@ -1,5 +1,45 @@
 /* global logger */
 
+/**
+ * Recursively sanitizes an object by removing sensitive fields
+ * @param {*} obj - Object to sanitize
+ * @param {Array<string>} sensitiveFields - List of sensitive field names
+ * @returns {*} Sanitized object
+ */
+function sanitizeObject(obj, sensitiveFields) {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeObject(item, sensitiveFields));
+  }
+
+  // Handle objects
+  if (typeof obj === 'object') {
+    const sanitized = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Check if field is sensitive (case-insensitive)
+      const isSensitive = sensitiveFields.some(
+        field => key.toLowerCase().includes(field.toLowerCase())
+      );
+
+      if (isSensitive) {
+        sanitized[key] = '[REDACTED]';
+      } else if (typeof value === 'object') {
+        sanitized[key] = sanitizeObject(value, sensitiveFields);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    return sanitized;
+  }
+
+  // Primitive values
+  return obj;
+}
+
 function requestLogger(req, res, next) {
   const startTime = Date.now();
 
@@ -16,13 +56,17 @@ function requestLogger(req, res, next) {
       'reset_token',
       'access_token',
       'refresh_token',
+      'authorization',
+      'auth',
+      'secret',
+      'key',
       'api_key_encrypted',
       'client_id_encrypted',
-      'client_secret_encrypted'
+      'client_secret_encrypted',
+      'credential'
     ];
 
-    const sanitized = { ...req.body };
-    sensitiveFields.forEach(field => delete sanitized[field]);
+    const sanitized = sanitizeObject(req.body, sensitiveFields);
 
     logger.info('Request data', sanitized);
   }
