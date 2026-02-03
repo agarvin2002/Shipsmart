@@ -131,18 +131,14 @@ async function createTestRate(userId, overrides = {}) {
 
   const defaultRate = {
     user_id: userId,
-    carrier: overrides.carrier || 'fedex',
-    service_name: overrides.service_name || 'FedEx Ground',
-    service_type: overrides.service_type || 'GROUND',
-    rate_amount: overrides.rate_amount || '15.50',
-    currency: overrides.currency || 'USD',
-    delivery_days: overrides.delivery_days || 3,
-    origin_zip: overrides.origin_zip || '10001',
-    destination_zip: overrides.destination_zip || '90210',
-    weight: overrides.weight || 10,
-    weight_unit: overrides.weight_unit || 'lb',
-    shipment_id: overrides.shipment_id || null,
-    raw_response: overrides.raw_response || null
+    carrier: 'fedex',
+    service_name: 'FedEx Ground',
+    rate_amount: '15.50',
+    currency: 'USD',
+    delivery_days: 3,
+    shipment_id: null,
+    raw_response: null,
+    ...overrides  // Merge all overrides to allow fetched_at and other fields
   };
 
   return await Rate.create(defaultRate);

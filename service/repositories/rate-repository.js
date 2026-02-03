@@ -9,8 +9,19 @@ class RateRepository {
     return await Rate.bulkCreate(ratesData);
   }
 
-  async findById(id) {
-    return await Rate.findByPk(id);
+  /**
+   * Find rate by ID with user_id filtering (multi-tenancy security)
+   * @param {number} id - Rate ID
+   * @param {number} userId - User ID (for security filtering)
+   * @returns {Promise<Rate|null>} Rate if found and belongs to user, null otherwise
+   */
+  async findById(id, userId) {
+    return await Rate.findOne({
+      where: {
+        id,
+        user_id: userId  // CRITICAL: Prevents cross-user data access
+      }
+    });
   }
 
   async findByShipmentId(shipmentId) {
@@ -51,10 +62,19 @@ class RateRepository {
     });
   }
 
+  /**
+   * Delete rate by ID with user_id filtering (multi-tenancy security)
+   * @param {number} id - Rate ID
+   * @param {number} userId - User ID (for security filtering)
+   * @returns {Promise<number|null>} Number of deleted rows, or null if no rows deleted
+   */
   async delete(id, userId) {
-    return await Rate.destroy({
+    const deletedCount = await Rate.destroy({
       where: { id, user_id: userId },
     });
+
+    // Return null if no rows were deleted (rate doesn't exist or doesn't belong to user)
+    return deletedCount > 0 ? deletedCount : null;
   }
 }
 
