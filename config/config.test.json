@@ -10,12 +10,20 @@
     "host": "localhost",
     "port": 5432,
     "dialect": "postgres",
+    "logging": false,
     "pool": {
       "max": 3,
       "min": 0,
       "acquire": 60000,
       "idle": 10000
     }
+  },
+  "jwt": {
+    "secret": "test-jwt-secret-key-for-testing-only-min-32-chars-long",
+    "expiresIn": 2592000
+  },
+  "encryption": {
+    "key": "12345678901234567890123456789012"
   },
   "aws": {
     "region": "us-east-1",
