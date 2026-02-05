@@ -28,14 +28,24 @@ function createMockRequest(overrides = {}) {
 
 function createMockResponse() {
   const res = {
-    status: jest.fn().returnsThis(),
-    json: jest.fn().returnsThis(),
-    send: jest.fn().returnsThis(),
-    sendStatus: jest.fn().returnsThis(),
-    set: jest.fn().returnsThis(),
-    cookie: jest.fn().returnsThis(),
-    clearCookie: jest.fn().returnsThis(),
+    status: jest.fn(),
+    json: jest.fn(),
+    send: jest.fn(),
+    sendStatus: jest.fn(),
+    set: jest.fn(),
+    cookie: jest.fn(),
+    clearCookie: jest.fn(),
   };
+
+  // Make methods chainable
+  res.status.mockReturnValue(res);
+  res.json.mockReturnValue(res);
+  res.send.mockReturnValue(res);
+  res.sendStatus.mockReturnValue(res);
+  res.set.mockReturnValue(res);
+  res.cookie.mockReturnValue(res);
+  res.clearCookie.mockReturnValue(res);
+
   return res;
 }
 
