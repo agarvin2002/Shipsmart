@@ -1,29 +1,32 @@
 const { Check } = require('../models');
 
 class CheckRepository {
-  async findAll(options = {}) {
+  async findAll(userId, options = {}) {
     return await Check.findAll({
+      where: { user_id: userId },  // CRITICAL: Multi-tenancy filter
       order: [['created_at', 'DESC']],
       ...options
     });
   }
 
-  async findById(id) {
-    return await Check.findByPk(id);
+  async findById(id, userId) {
+    return await Check.findOne({
+      where: { id, user_id: userId }  // CRITICAL: Multi-tenancy filter
+    });
   }
 
   async create(checkData) {
     return await Check.create(checkData);
   }
 
-  async update(id, checkData) {
-    const check = await this.findById(id);
+  async update(id, userId, checkData) {
+    const check = await this.findById(id, userId);
     if (!check) return null;
     return await check.update(checkData);
   }
 
-  async delete(id) {
-    const check = await this.findById(id);
+  async delete(id, userId) {
+    const check = await this.findById(id, userId);
     if (!check) return null;
     await check.destroy();
     return true;

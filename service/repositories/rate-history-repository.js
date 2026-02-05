@@ -10,13 +10,14 @@ class RateHistoryRepository {
     return await RateHistory.bulkCreate(historyDataArray);
   }
 
-  async findByRoute(originZip, destinationZip, options = {}) {
+  async findByRoute(originZip, destinationZip, userId, options = {}) {
     const { carrier = null, limit = 100, days = 30 } = options;
 
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - days);
 
     const where = {
+      user_id: userId,  // CRITICAL: Multi-tenancy filter
       origin_zip: originZip,
       destination_zip: destinationZip,
       fetched_at: { [Op.gte]: sinceDate },
@@ -33,7 +34,7 @@ class RateHistoryRepository {
     });
   }
 
-  async getAverageRate(originZip, destinationZip, carrier, serviceName, days = 30) {
+  async getAverageRate(originZip, destinationZip, carrier, serviceName, userId, days = 30) {
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - days);
 
@@ -43,6 +44,7 @@ class RateHistoryRepository {
         [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count'],
       ],
       where: {
+        user_id: userId,  // CRITICAL: Multi-tenancy filter
         origin_zip: originZip,
         destination_zip: destinationZip,
         carrier,
