@@ -22,3 +22,17 @@ global.logger = {
   warn: jest.fn(),
   debug: jest.fn()
 };
+
+// Mock Redis globally to prevent real connections during tests
+jest.mock('redis', () => ({
+  createClient: jest.fn(() => ({
+    on: jest.fn(),
+    connect: jest.fn(),
+    quit: jest.fn(),
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+    expire: jest.fn(),
+    setex: jest.fn(),
+  })),
+}));

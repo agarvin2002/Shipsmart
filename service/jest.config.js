@@ -29,5 +29,7 @@ module.exports = {
   maxWorkers: '50%',
   clearMocks: true,
   resetMocks: true,
-  restoreMocks: true
+  restoreMocks: true,
+  forceExit: true,
+  detectOpenHandles: false
 };
