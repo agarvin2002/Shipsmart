@@ -13,6 +13,8 @@ const UserRepository = require('../../../repositories/user-repository');
 const SessionRepository = require('../../../repositories/session-repository');
 const JwtHelper = require('../../../helpers/jwt-helper');
 const bcrypt = require('bcrypt');
+const ValidationError = require('../../../errors/validation-error');
+const AuthenticationError = require('../../../errors/authentication-error');
 
 // Mock all dependencies
 jest.mock('../../../repositories/user-repository');
@@ -106,11 +108,8 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByEmail.mockResolvedValue(existingUser);
 
-      // Act
-      const result = await authService.register(userData);
-
-      // Assert
-      expect(result.error).toBe('Email already registered');
+      // Act & Assert
+      await expect(authService.register(userData)).rejects.toThrow(ValidationError);
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(mockUserRepo.create).not.toHaveBeenCalled();
     });
@@ -195,11 +194,10 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByEmail.mockResolvedValue(null);
 
-      // Act
-      const result = await authService.login(email, password, '127.0.0.1', 'Device');
-
-      // Assert
-      expect(result.error).toBe('Invalid credentials');
+      // Act & Assert
+      await expect(
+        authService.login(email, password, '127.0.0.1', 'Device')
+      ).rejects.toThrow(AuthenticationError);
       expect(bcrypt.compare).not.toHaveBeenCalled();
       expect(JwtHelper.generateAccessToken).not.toHaveBeenCalled();
     });
@@ -218,11 +216,10 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByEmail.mockResolvedValue(user);
 
-      // Act
-      const result = await authService.login(email, password, '127.0.0.1', 'Device');
-
-      // Assert
-      expect(result.error).toBe('Account is inactive or suspended');
+      // Act & Assert
+      await expect(
+        authService.login(email, password, '127.0.0.1', 'Device')
+      ).rejects.toThrow(AuthenticationError);
       expect(bcrypt.compare).not.toHaveBeenCalled();
     });
 
@@ -241,11 +238,10 @@ describe('AuthService Unit Tests', () => {
       mockUserRepo.findByEmail.mockResolvedValue(user);
       bcrypt.compare.mockResolvedValue(false);
 
-      // Act
-      const result = await authService.login(email, password, '127.0.0.1', 'Device');
-
-      // Assert
-      expect(result.error).toBe('Invalid credentials');
+      // Act & Assert
+      await expect(
+        authService.login(email, password, '127.0.0.1', 'Device')
+      ).rejects.toThrow(AuthenticationError);
       expect(JwtHelper.generateAccessToken).not.toHaveBeenCalled();
       expect(mockSessionRepo.create).not.toHaveBeenCalled();
     });
@@ -261,11 +257,10 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByEmail.mockResolvedValue(user);
 
-      // Act
-      const result = await authService.login('suspended@example.com', 'password', '127.0.0.1', 'Device');
-
-      // Assert
-      expect(result.error).toBe('Account is inactive or suspended');
+      // Act & Assert
+      await expect(
+        authService.login('suspended@example.com', 'password', '127.0.0.1', 'Device')
+      ).rejects.toThrow(AuthenticationError);
     });
   });
 
@@ -397,11 +392,10 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByResetToken.mockResolvedValue(null);
 
-      // Act
-      const result = await authService.resetPassword(token, newPassword);
-
-      // Assert
-      expect(result.error).toBe('Invalid or expired reset token');
+      // Act & Assert
+      await expect(
+        authService.resetPassword(token, newPassword)
+      ).rejects.toThrow(AuthenticationError);
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(mockUserRepo.updatePassword).not.toHaveBeenCalled();
     });
@@ -420,11 +414,10 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByResetToken.mockResolvedValue(user);
 
-      // Act
-      const result = await authService.resetPassword(token, newPassword);
-
-      // Assert
-      expect(result.error).toBe('Invalid or expired reset token');
+      // Act & Assert
+      await expect(
+        authService.resetPassword(token, newPassword)
+      ).rejects.toThrow(AuthenticationError);
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(mockUserRepo.updatePassword).not.toHaveBeenCalled();
     });
@@ -443,11 +436,10 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByResetToken.mockResolvedValue(user);
 
-      // Act
-      const result = await authService.resetPassword(token, newPassword);
-
-      // Assert
-      expect(result.error).toBe('Invalid or expired reset token');
+      // Act & Assert
+      await expect(
+        authService.resetPassword(token, newPassword)
+      ).rejects.toThrow(AuthenticationError);
     });
   });
 
@@ -480,11 +472,8 @@ describe('AuthService Unit Tests', () => {
 
       mockUserRepo.findByVerificationToken.mockResolvedValue(null);
 
-      // Act
-      const result = await authService.verifyEmail(token);
-
-      // Assert
-      expect(result.error).toBe('Invalid verification token');
+      // Act & Assert
+      await expect(authService.verifyEmail(token)).rejects.toThrow(AuthenticationError);
       expect(mockUserRepo.setEmailVerified).not.toHaveBeenCalled();
     });
 

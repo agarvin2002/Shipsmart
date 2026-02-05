@@ -1,5 +1,7 @@
 /* global logger */
 const AddressRepository = require('../repositories/address-repository');
+const NotFoundError = require('../errors/not-found-error');
+const ValidationError = require('../errors/validation-error');
 
 class AddressService {
   constructor() {
@@ -50,7 +52,7 @@ class AddressService {
     try {
       const address = await this.addressRepository.findByIdAndUserId(id, userId);
       if (!address) {
-        return { error: 'Address not found' };
+        throw new NotFoundError('Address', `Address with id ${id} not found`);
       }
       return address;
     } catch (error) {
@@ -81,7 +83,7 @@ class AddressService {
     try {
       const address = await this.addressRepository.findByIdAndUserId(id, userId);
       if (!address) {
-        return { error: 'Address not found' };
+        throw new NotFoundError('Address', `Address with id ${id} not found`);
       }
 
       // Only source addresses can be set as default
@@ -104,7 +106,7 @@ class AddressService {
     try {
       const address = await this.addressRepository.findByIdAndUserId(id, userId);
       if (!address) {
-        return { error: 'Address not found' };
+        throw new NotFoundError('Address', `Address with id ${id} not found`);
       }
 
       return await this.addressRepository.delete(id, userId);
@@ -118,12 +120,12 @@ class AddressService {
     try {
       const address = await this.addressRepository.findByIdAndUserId(id, userId);
       if (!address) {
-        return { error: 'Address not found' };
+        throw new NotFoundError('Address', `Address with id ${id} not found`);
       }
 
       // Only source addresses can be set as default
       if (address.address_type !== 'source') {
-        return { error: 'Only source addresses can be set as default' };
+        throw new ValidationError('Only source addresses can be set as default');
       }
 
       const result = await this.addressRepository.setDefault(id, userId);

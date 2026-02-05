@@ -18,6 +18,8 @@ const CarrierCredentialService = require('../../../services/carrier-credential-s
 const CarrierCredentialRepository = require('../../../repositories/carrier-credential-repository');
 const CryptoHelper = require('../../../helpers/crypto-helper');
 const CarrierRouter = require('../../../lib/carrier-router');
+const NotFoundError = require('../../../errors/not-found-error');
+const ValidationError = require('../../../errors/validation-error');
 const { createMockCarrierCredential } = require('../../utils/test-helpers');
 
 describe('CarrierCredentialService', () => {
@@ -118,9 +120,9 @@ describe('CarrierCredentialService', () => {
     it('should handle credential not found', async () => {
       mockRepository.findByIdAndUserId.mockResolvedValue(null);
 
-      const result = await service.getCredentialById('cred-not-found', 'user-123');
-
-      expect(result).toEqual({ error: 'Credential not found' });
+      await expect(
+        service.getCredentialById('cred-not-found', 'user-123')
+      ).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -165,9 +167,7 @@ describe('CarrierCredentialService', () => {
         client_secret: 'test',
       };
 
-      const result = await service.createCredential(data);
-
-      expect(result).toEqual({ error: 'Credential for fedex already exists' });
+      await expect(service.createCredential(data)).rejects.toThrow(ValidationError);
       expect(mockRepository.create).not.toHaveBeenCalled();
     });
 
@@ -234,9 +234,9 @@ describe('CarrierCredentialService', () => {
     it('should handle credential not found', async () => {
       mockRepository.findByIdAndUserId.mockResolvedValue(null);
 
-      const result = await service.updateCredential('cred-not-found', 'user-123', {});
-
-      expect(result).toEqual({ error: 'Credential not found' });
+      await expect(
+        service.updateCredential('cred-not-found', 'user-123', {})
+      ).rejects.toThrow(NotFoundError);
       expect(mockRepository.update).not.toHaveBeenCalled();
     });
   });
@@ -256,9 +256,9 @@ describe('CarrierCredentialService', () => {
     it('should handle credential not found', async () => {
       mockRepository.findByIdAndUserId.mockResolvedValue(null);
 
-      const result = await service.deleteCredential('cred-not-found', 'user-123');
-
-      expect(result).toEqual({ error: 'Credential not found' });
+      await expect(
+        service.deleteCredential('cred-not-found', 'user-123')
+      ).rejects.toThrow(NotFoundError);
       expect(mockRepository.delete).not.toHaveBeenCalled();
     });
   });

@@ -2,6 +2,8 @@
 const CarrierCredentialRepository = require('../repositories/carrier-credential-repository');
 const CryptoHelper = require('../helpers/crypto-helper');
 const CarrierRouter = require('../lib/carrier-router');
+const NotFoundError = require('../errors/not-found-error');
+const ValidationError = require('../errors/validation-error');
 
 class CarrierCredentialService {
   constructor() {
@@ -32,7 +34,7 @@ class CarrierCredentialService {
     try {
       const credential = await this.credentialRepository.findByIdAndUserId(id, userId);
       if (!credential) {
-        return { error: 'Credential not found' };
+        throw new NotFoundError('Credential', `Credential with id ${id} not found`);
       }
 
       const credData = credential.toJSON();
@@ -54,7 +56,7 @@ class CarrierCredentialService {
     try {
       const existing = await this.credentialRepository.findByUserIdAndCarrier(data.user_id, data.carrier);
       if (existing) {
-        return { error: `Credential for ${data.carrier} already exists` };
+        throw new ValidationError(`Credential for ${data.carrier} already exists`);
       }
 
       const encryptedClientId = CryptoHelper.encrypt(data.client_id);
@@ -88,7 +90,7 @@ class CarrierCredentialService {
     try {
       const credential = await this.credentialRepository.findByIdAndUserId(id, userId);
       if (!credential) {
-        return { error: 'Credential not found' };
+        throw new NotFoundError('Credential', `Credential with id ${id} not found`);
       }
 
       const updateData = {};
@@ -134,7 +136,7 @@ class CarrierCredentialService {
     try {
       const credential = await this.credentialRepository.findByIdAndUserId(id, userId);
       if (!credential) {
-        return { error: 'Credential not found' };
+        throw new NotFoundError('Credential', `Credential with id ${id} not found`);
       }
 
       return await this.credentialRepository.delete(id, userId);
@@ -148,7 +150,7 @@ class CarrierCredentialService {
     try {
       const credential = await this.credentialRepository.findByIdAndUserId(id, userId);
       if (!credential) {
-        return { error: 'Credential not found' };
+        throw new NotFoundError('Credential', `Credential with id ${id} not found`);
       }
 
       const clientId = CryptoHelper.decrypt(credential.client_id_encrypted);

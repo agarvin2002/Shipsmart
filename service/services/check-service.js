@@ -1,5 +1,6 @@
 /* global logger */
 const CheckRepository = require('../repositories/check-repository');
+const NotFoundError = require('../errors/not-found-error');
 const { s3Wrapper, S3KeyGenerator } = require('@shipsmart/s3');
 const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
 
@@ -41,7 +42,7 @@ class CheckService {
       const check = await this.checkRepository.findById(id);
 
       if (!check) {
-        return { error: 'Check not found' };
+        throw new NotFoundError('Check', `Check with id ${id} not found`);
       }
 
       // Convert Sequelize model to plain object
@@ -84,16 +85,15 @@ class CheckService {
 
   async updateCheck(id, data) {
     try {
-      const check = await this.checkRepository.findById(id);
-      if (!check) {
-        return { error: 'Check not found' };
-      }
+      const updateData = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.status !== undefined) updateData.status = data.status;
 
-      await check.update({
-        name: data.name !== undefined ? data.name : check.name,
-        description: data.description !== undefined ? data.description : check.description,
-        status: data.status !== undefined ? data.status : check.status,
-      });
+      const check = await this.checkRepository.update(id, updateData);
+      if (!check) {
+        throw new NotFoundError('Check', `Check with id ${id} not found`);
+      }
 
       return check;
     } catch (error) {
@@ -104,12 +104,11 @@ class CheckService {
 
   async deleteCheck(id) {
     try {
-      const check = await this.checkRepository.findById(id);
-      if (!check) {
-        return { error: 'Check not found' };
+      const result = await this.checkRepository.delete(id);
+      if (!result) {
+        throw new NotFoundError('Check', `Check with id ${id} not found`);
       }
 
-      await check.destroy();
       return { message: 'Check deleted successfully' };
     } catch (error) {
       logger.error(`Error deleting check ${id}: ${error.stack}`);

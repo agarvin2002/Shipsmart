@@ -18,6 +18,8 @@ const UserService = require('../../../services/user-service');
 const bcrypt = require('bcrypt');
 const UserRepository = require('../../../repositories/user-repository');
 const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
+const NotFoundError = require('../../../errors/not-found-error');
+const AuthenticationError = require('../../../errors/authentication-error');
 const { createMockUser } = require('../../utils/test-helpers');
 
 describe('UserService', () => {
@@ -129,9 +131,7 @@ describe('UserService', () => {
       RedisWrapper.get.mockResolvedValue(null);
       mockUserRepository.findById.mockResolvedValue(null);
 
-      const result = await userService.getUserById('user-not-found');
-
-      expect(result).toEqual({ error: 'User not found' });
+      await expect(userService.getUserById('user-not-found')).rejects.toThrow(NotFoundError);
       expect(RedisWrapper.setWithExpiry).not.toHaveBeenCalled();
     });
 
@@ -166,9 +166,7 @@ describe('UserService', () => {
     it('should handle user not found', async () => {
       mockUserRepository.update.mockResolvedValue(null);
 
-      const result = await userService.updateUser('user-not-found', {});
-
-      expect(result).toEqual({ error: 'User not found' });
+      await expect(userService.updateUser('user-not-found', {})).rejects.toThrow(NotFoundError);
       expect(RedisWrapper.del).not.toHaveBeenCalled();
     });
 
@@ -211,13 +209,10 @@ describe('UserService', () => {
       mockUserRepository.findById.mockResolvedValue(mockUser);
       bcrypt.compare.mockResolvedValue(false);
 
-      const result = await userService.changePassword(
-        'user-123',
-        'wrong_password',
-        'new_password'
-      );
+      await expect(
+        userService.changePassword('user-123', 'wrong_password', 'new_password')
+      ).rejects.toThrow(AuthenticationError);
 
-      expect(result).toEqual({ error: 'Current password is incorrect' });
       expect(bcrypt.hash).not.toHaveBeenCalled();
       expect(mockUserRepository.updatePassword).not.toHaveBeenCalled();
     });
@@ -225,13 +220,10 @@ describe('UserService', () => {
     it('should handle user not found', async () => {
       mockUserRepository.findById.mockResolvedValue(null);
 
-      const result = await userService.changePassword(
-        'user-not-found',
-        'current',
-        'new'
-      );
+      await expect(
+        userService.changePassword('user-not-found', 'current', 'new')
+      ).rejects.toThrow(NotFoundError);
 
-      expect(result).toEqual({ error: 'User not found' });
       expect(bcrypt.compare).not.toHaveBeenCalled();
     });
   });
@@ -250,9 +242,7 @@ describe('UserService', () => {
     it('should handle user not found', async () => {
       mockUserRepository.softDelete.mockResolvedValue(null);
 
-      const result = await userService.deleteUser('user-not-found');
-
-      expect(result).toEqual({ error: 'User not found' });
+      await expect(userService.deleteUser('user-not-found')).rejects.toThrow(NotFoundError);
       expect(RedisWrapper.del).not.toHaveBeenCalled();
     });
   });
@@ -281,9 +271,9 @@ describe('UserService', () => {
     it('should handle user not found', async () => {
       mockUserRepository.findWithAddresses.mockResolvedValue(null);
 
-      const result = await userService.getUserWithAddresses('user-not-found');
-
-      expect(result).toEqual({ error: 'User not found' });
+      await expect(
+        userService.getUserWithAddresses('user-not-found')
+      ).rejects.toThrow(NotFoundError);
     });
   });
 });
