@@ -1,28 +1,24 @@
-const { sequelize } = require('../models');
+/**
+ * Per-File Test Setup
+ *
+ * This runs BEFORE each test file.
+ * Database initialization is handled by globalSetup.js
+ *
+ * This file only:
+ * - Sets environment variables
+ * - Mocks global logger
+ */
 
-module.exports = async () => {
-  // Set NODE_ENV to test
-  process.env.NODE_ENV = 'test';
+// Set NODE_ENV to test
+process.env.NODE_ENV = 'test';
 
-  // Set test encryption key (32 characters for AES-256)
-  process.env.ENCRYPTION_KEY = '12345678901234567890123456789012';
+// Set test encryption key (32 characters for AES-256)
+process.env.ENCRYPTION_KEY = '12345678901234567890123456789012';
 
-  // Mock global logger to prevent actual logging during tests
-  global.logger = {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn()
-  };
-
-  console.log('Setting up test environment...');
-
-  try {
-    // Run migrations on test database (sync with force: true drops and recreates)
-    await sequelize.sync({ force: true });
-    console.log('Test database initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize test database:', error);
-    throw error;
-  }
+// Mock global logger to prevent actual logging during tests
+global.logger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn()
 };

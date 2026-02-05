@@ -13,6 +13,9 @@ module.exports = {
     '!coverage/**'
   ],
   testMatch: ['**/__tests__/**/*.test.js'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid)/)'  // Transform uuid package (it uses ES modules)
+  ],
   coverageThreshold: {
     global: {
       branches: 75,
@@ -21,11 +24,16 @@ module.exports = {
       statements: 80
     }
   },
+  // Global setup runs ONCE before all tests (initializes database)
+  globalSetup: '<rootDir>/__tests__/globalSetup.js',
+  globalTeardown: '<rootDir>/__tests__/globalTeardown.js',
+  // Per-file setup (runs before each test file)
   setupFiles: ['<rootDir>/__tests__/setup.js'],
   setupFilesAfterEnv: ['<rootDir>/__tests__/setupAfterEnv.js'],
   testTimeout: 10000,
   verbose: true,
-  maxWorkers: '50%',
+  // Run tests serially to avoid database conflicts
+  maxWorkers: 1,
   clearMocks: true,
   resetMocks: true,
   restoreMocks: true,
