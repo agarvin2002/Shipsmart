@@ -3,15 +3,21 @@
  * Tests UPS-specific rate transformation and API integration
  */
 
+// Mock all dependencies FIRST before any requires
+jest.mock('../../../../lib/carrier-proxies/ups-proxy');
+jest.mock('../../../../lib/request-builders/ups-rate-request-builder');
+jest.mock('../../../../helpers/crypto-helper');
+jest.mock('../../../../workers/utils/producer', () => ({
+  getWorkerProducer: jest.fn(() => ({ publishMessage: jest.fn() })),
+}));
+jest.mock('cls-hooked', () => ({
+  getNamespace: jest.fn(() => null),
+}));
+
 const UpsRateService = require('../../../../services/carriers/ups-rate-service');
 const UpsProxy = require('../../../../lib/carrier-proxies/ups-proxy');
 const UpsRateRequestBuilder = require('../../../../lib/request-builders/ups-rate-request-builder');
 const CryptoHelper = require('../../../../helpers/crypto-helper');
-
-// Mock all dependencies
-jest.mock('../../../../lib/carrier-proxies/ups-proxy');
-jest.mock('../../../../lib/request-builders/ups-rate-request-builder');
-jest.mock('../../../../helpers/crypto-helper');
 
 describe('UpsRateService Unit Tests', () => {
   let upsService;

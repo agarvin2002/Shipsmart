@@ -3,27 +3,48 @@
  * Tests cache management, parallel carrier calls, and rate analysis
  */
 
-const CarrierRateOrchestrator = require('../../../../services/carriers/carrier-rate-orchestrator');
-const CarrierRouter = require('../../../../lib/carrier-router');
-const AddressRepository = require('../../../../repositories/address-repository');
-const { Rate, RateHistory } = require('../../../../models');
-
-// Mock all dependencies
+// Mock all dependencies FIRST before any requires
+jest.mock('sequelize');
+jest.mock('cls-hooked', () => ({
+  getNamespace: jest.fn(() => null),
+  createNamespace: jest.fn(() => ({ run: jest.fn((fn) => fn()) })),
+}));
+jest.mock('../../../../workers/utils/producer', () => ({
+  getWorkerProducer: jest.fn(() => ({ publishMessage: jest.fn() })),
+}));
+jest.mock('../../../../services/carriers/fedex-rate-service');
+jest.mock('../../../../services/carriers/ups-rate-service');
+jest.mock('../../../../services/carriers/usps-rate-service');
 jest.mock('../../../../lib/carrier-router');
 jest.mock('../../../../repositories/address-repository');
-jest.mock('../../../../models');
-
-// Mock RedisWrapper with jest functions
+jest.mock('../../../../models', () => ({
+  Rate: {
+    create: jest.fn(),
+    bulkCreate: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+  },
+  RateHistory: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+  },
+  CarrierCredential: jest.fn(),
+  Carrier: jest.fn(),
+  CarrierService: jest.fn(),
+}));
 jest.mock('@shipsmart/redis', () => ({
   get: jest.fn(),
   setWithExpiry: jest.fn(),
   del: jest.fn()
 }));
-
-// Mock PackageNormalizer with jest function
 jest.mock('../../../../helpers/package-normalizer', () => ({
   normalize: jest.fn()
 }));
+
+const CarrierRateOrchestrator = require('../../../../services/carriers/carrier-rate-orchestrator');
+const CarrierRouter = require('../../../../lib/carrier-router');
+const AddressRepository = require('../../../../repositories/address-repository');
+const { Rate, RateHistory } = require('../../../../models');
 
 const RedisWrapper = require('@shipsmart/redis');
 const PackageNormalizer = require('../../../../helpers/package-normalizer');

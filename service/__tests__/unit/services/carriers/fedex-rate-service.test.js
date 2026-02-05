@@ -3,15 +3,21 @@
  * Tests FedEx-specific rate transformation and API integration
  */
 
+// Mock all dependencies FIRST before any requires
+jest.mock('../../../../lib/carrier-proxies/fedex-proxy');
+jest.mock('../../../../lib/request-builders/fedex-rate-request-builder');
+jest.mock('../../../../helpers/crypto-helper');
+jest.mock('../../../../workers/utils/producer', () => ({
+  getWorkerProducer: jest.fn(() => ({ publishMessage: jest.fn() })),
+}));
+jest.mock('cls-hooked', () => ({
+  getNamespace: jest.fn(() => null),
+}));
+
 const FedexRateService = require('../../../../services/carriers/fedex-rate-service');
 const FedexProxy = require('../../../../lib/carrier-proxies/fedex-proxy');
 const FedexRateRequestBuilder = require('../../../../lib/request-builders/fedex-rate-request-builder');
 const CryptoHelper = require('../../../../helpers/crypto-helper');
-
-// Mock all dependencies
-jest.mock('../../../../lib/carrier-proxies/fedex-proxy');
-jest.mock('../../../../lib/request-builders/fedex-rate-request-builder');
-jest.mock('../../../../helpers/crypto-helper');
 
 describe('FedexRateService Unit Tests', () => {
   let fedexService;

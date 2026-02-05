@@ -3,13 +3,46 @@
  * Tests business logic with mocked dependencies
  */
 
+// Mock all dependencies FIRST before any requires
+jest.mock('sequelize');
+jest.mock('cls-hooked', () => ({
+  getNamespace: jest.fn(() => null),
+  createNamespace: jest.fn(() => ({ run: jest.fn((fn) => fn()) })),
+}));
+jest.mock('../../../workers/utils/producer', () => ({
+  getWorkerProducer: jest.fn(() => ({ publishMessage: jest.fn() })),
+}));
+jest.mock('../../../services/carriers/fedex-rate-service');
+jest.mock('../../../services/carriers/ups-rate-service');
+jest.mock('../../../services/carriers/usps-rate-service');
+jest.mock('../../../services/carriers/carrier-rate-orchestrator');
+jest.mock('../../../repositories/rate-history-repository', () => {
+  return jest.fn().mockImplementation(() => ({
+    create: jest.fn(),
+    findByUserId: jest.fn(),
+    findByShipmentId: jest.fn(),
+  }));
+});
+jest.mock('../../../models', () => ({
+  Rate: {
+    create: jest.fn(),
+    bulkCreate: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+  },
+  RateHistory: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+  },
+  CarrierCredential: jest.fn(),
+  Carrier: jest.fn(),
+  CarrierService: jest.fn(),
+}));
+jest.mock('../../../lib/carrier-router');
+
 const RateService = require('../../../services/rate-service');
 const CarrierRateOrchestrator = require('../../../services/carriers/carrier-rate-orchestrator');
 const RateHistoryRepository = require('../../../repositories/rate-history-repository');
-
-// Mock all dependencies
-jest.mock('../../../services/carriers/carrier-rate-orchestrator');
-jest.mock('../../../repositories/rate-history-repository');
 
 describe('RateService Unit Tests', () => {
   let rateService;
