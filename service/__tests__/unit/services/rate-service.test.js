@@ -15,12 +15,19 @@ jest.mock('../../../workers/utils/producer', () => ({
 jest.mock('../../../services/carriers/fedex-rate-service');
 jest.mock('../../../services/carriers/ups-rate-service');
 jest.mock('../../../services/carriers/usps-rate-service');
-jest.mock('../../../services/carriers/carrier-rate-orchestrator');
+jest.mock('../../../services/carriers/carrier-rate-orchestrator', () => {
+  return jest.fn().mockImplementation(() => ({
+    getRatesForShipment: jest.fn(),
+    fetchRates: jest.fn(),
+    invalidateCache: jest.fn(),
+  }));
+});
 jest.mock('../../../repositories/rate-history-repository', () => {
   return jest.fn().mockImplementation(() => ({
     create: jest.fn(),
     findByUserId: jest.fn(),
     findByShipmentId: jest.fn(),
+    findByRoute: jest.fn(),
   }));
 });
 jest.mock('../../../models', () => ({
@@ -53,12 +60,37 @@ describe('RateService Unit Tests', () => {
     // Clear all mocks before each test
     jest.clearAllMocks();
 
+    // Setup mock orchestrator
+    mockOrchestrator = {
+      getRatesForShipment: jest.fn(),
+      fetchRates: jest.fn(),
+      invalidateCache: jest.fn(),
+    };
+    CarrierRateOrchestrator.mockImplementation(() => mockOrchestrator);
+
+    // Setup mock rate history repository
+    mockRateHistoryRepo = {
+      create: jest.fn(),
+      findByUserId: jest.fn(),
+      findByShipmentId: jest.fn(),
+      findByRoute: jest.fn(),
+    };
+    RateHistoryRepository.mockImplementation(() => mockRateHistoryRepo);
+
+    // Setup global logger
+    global.logger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+    };
+
     // Create service instance
     rateService = new RateService();
+  });
 
-    // Get mock instances
-    mockOrchestrator = rateService.orchestrator;
-    mockRateHistoryRepo = rateService.rateHistoryRepository;
+  afterEach(() => {
+    delete global.logger;
   });
 
   describe('#getRates', () => {
