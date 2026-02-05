@@ -12,6 +12,9 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(uuid)/)'
   ],
+  moduleNameMapper: {
+    '^uuid$': require.resolve('uuid')
+  },
   coverageThreshold: {
     global: {
       branches: 50,
