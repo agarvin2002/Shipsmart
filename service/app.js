@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const addRequestId = require('express-request-id')();
 const bodyParser = require('body-parser');
+const SentryHelper = require('./helpers/sentry-helper');
 
 // Increase max listeners to prevent warning during hot reloads and multiple event handlers
 process.setMaxListeners(20);
@@ -16,6 +17,9 @@ initializeLogger();
 const db = require('./models');
 
 const app = express();
+
+// Initialize Sentry error tracking (only if SENTRY_DSN is configured)
+SentryHelper.init(app);
 
 db.sequelize.sync()
   .then(() => {
@@ -130,6 +134,9 @@ app.use('/api/', apiRouter);
 
 const ResponseFormatter = require('./helpers/response-formatter');
 
+// Sentry error handler - captures errors before they're handled
+app.use(SentryHelper.errorHandler());
+
 app.use((err, req, res, next) => {
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
@@ -168,8 +175,11 @@ function gracefulShutdown(signal) {
   logger.info(`${signal} received. Closing HTTP server gracefully...`);
 
   // Stop accepting new connections
-  server.close(() => {
+  server.close(async () => {
     logger.info('HTTP server closed');
+
+    // Flush pending Sentry events
+    await SentryHelper.flush();
 
     // Close database connections
     db.sequelize.close()

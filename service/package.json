@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@hapi/joi": "15.0.3",
+    "@sentry/node": "^10.38.0",
     "@shipsmart/constants": "1.0.0",
     "@shipsmart/env": "1.0.0",
     "@shipsmart/errors": "1.0.0",
