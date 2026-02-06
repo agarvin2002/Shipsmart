@@ -74,10 +74,11 @@ curl http://localhost:3001/health
 | **Core** | Node.js v22, Express v4, Yarn Workspaces |
 | **Database** | PostgreSQL v14, Sequelize ORM v5 |
 | **Cache/Queue** | Redis v7, Bull v4.1.1, Bull Arena |
-| **Security** | JWT, Passport.js, bcrypt, AES-256-CBC |
+| **Security** | JWT, Passport.js, bcrypt, AES-256-CBC, Helmet |
 | **Validation** | Joi, express-rate-limit |
-| **Logging** | Winston |
-| **DevOps** | Docker Compose, ESLint (Airbnb) |
+| **Observability** | Winston (structured JSON), Sentry |
+| **Testing** | Jest, Supertest (580 tests, 73%+ coverage) |
+| **DevOps** | Docker, Nginx, PM2, Terraform, GitHub Actions |
 
 ---
 
@@ -205,15 +206,15 @@ Full details: [.claude/CLAUDE.md](.claude/CLAUDE.md)
 |---------|---------------|
 | **Authentication** | JWT with 30-day expiration, session tracking |
 | **Credential Storage** | AES-256-CBC encryption for carrier API keys |
-| **Password Security** | bcrypt hashing (cost factor 10) |
-| **Rate Limiting** | 5 login attempts per 15 minutes |
+| **Password Policy** | 12+ chars, uppercase, lowercase, digit, special char |
+| **Session Security** | All sessions revoked on password reset |
+| **Rate Limiting** | 5 login/15min, 3 register/15min |
 | **Multi-Tenancy** | All queries filter by `user_id` |
+| **CORS** | Origin whitelist per environment |
+| **Headers** | Helmet middleware (CSP, HSTS, X-Frame-Options) |
+| **Error Tracking** | Sentry integration (sensitive data filtered) |
 
-⚠️ **Before Production**:
-- Change `jwt.secret` in config (32+ chars)
-- Change `encryption.key` (exactly 32 chars)
-- Update CORS from `*` to specific origins
-- Review security issues in [.claude/CLAUDE.md](.claude/CLAUDE.md)
+**Password Requirements**: Minimum 12 characters with uppercase, lowercase, digit, and special character (@$!%*?&)
 
 ---
 
@@ -254,12 +255,28 @@ Set environment: `NODE_ENV=development|test|staging|production`
 
 ## 🧪 Testing
 
-**Current Status**: No testing framework configured yet
+**Framework**: Jest + Supertest
 
-**Recommended**:
-- Jest for testing framework
-- Supertest for API endpoint tests
-- Sinon for mocks
+```bash
+# Run all tests
+cd service && yarn test
+
+# Run with coverage
+yarn test:coverage
+
+# Run specific test types
+yarn test:unit          # Unit tests only
+yarn test:integration   # Integration tests only
+yarn test:security      # Security tests only
+```
+
+**Coverage**: 73%+ across 580 tests in 37 test suites
+
+| Category | Coverage |
+|----------|----------|
+| Unit Tests | Controllers, Services, Helpers, Presenters |
+| Integration Tests | API endpoints, Database operations |
+| Security Tests | Auth middleware, Multi-tenancy |
 
 See testing guidelines in [.claude/CLAUDE.md](.claude/CLAUDE.md)
 
