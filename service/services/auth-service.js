@@ -128,6 +128,10 @@ class AuthService {
       await this.userRepository.updatePassword(user.id, newPasswordHash);
       await this.userRepository.clearResetToken(user.id);
 
+      // SECURITY: Revoke all existing sessions after password reset
+      await this.sessionRepository.revokeAllByUserId(user.id);
+      logger.info('All sessions revoked after password reset', { userId: user.id });
+
       return { message: 'Password reset successfully' };
     } catch (error) {
       logger.error(`Error in resetPassword: ${error.stack}`);
