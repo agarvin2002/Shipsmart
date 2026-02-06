@@ -1,0 +1,1111 @@
+{
+  "info": {
+    "name": "ShipSmart AI API",
+    "description": "ShipSmart AI API - Multi-carrier shipping rate comparison platform.\n\n## Getting Started\n1. Run `Register` to create an account\n2. Run `Login` to get access token (auto-saved to `accessToken` variable)\n3. Use other endpoints with authentication\n\n## Password Requirements\n- Minimum 12 characters\n- At least one uppercase letter\n- At least one lowercase letter\n- At least one digit\n- At least one special character (@$!%*?&)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "testEmail",
+      "value": "testuser@example.com"
+    },
+    {
+      "key": "testPassword",
+      "value": "SecurePass123!"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Health status is OK', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.be.oneOf(['OK', 'DEGRADED']);",
+                  "});",
+                  "",
+                  "pm.test('Has required fields', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('timestamp');",
+                  "    pm.expect(jsonData).to.have.property('uptime');",
+                  "    pm.expect(jsonData).to.have.property('environment');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Enhanced health check with DB, Redis, and memory metrics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 400', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test('Registration successful', function () {",
+                  "        const jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"company_name\": \"Acme Shipping Inc\",\n  \"phone\": \"+1234567890\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "User registration (rate limited: 3/15min)\n\n**Password Requirements:**\n- Minimum 12 characters\n- At least one uppercase letter (A-Z)\n- At least one lowercase letter (a-z)\n- At least one digit (0-9)\n- At least one special character (@$!%*?&)"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Login successful', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('token');",
+                  "});",
+                  "",
+                  "// Auto-save token for subsequent requests",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.token);",
+                  "    console.log('Access token saved to collection variables');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "User login (rate limited: 5/15min)\n\nOn successful login, the access token is automatically saved to the `accessToken` collection variable."
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Clear token on logout",
+                  "pm.collectionVariables.set('accessToken', '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout",
+            "description": "User logout - invalidates the current session"
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testEmail}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "description": "Request password reset - sends reset link to email"
+          }
+        },
+        {
+          "name": "Reset Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 400', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"paste-reset-token-here\",\n  \"new_password\": \"NewSecurePass456!\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/reset-password",
+            "description": "Reset password with token from email\n\n**Note:** All existing sessions are revoked after password reset"
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email/:token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email", ":token"],
+              "variable": [
+                {
+                  "key": "token",
+                  "value": "paste-verification-token"
+                }
+              ]
+            },
+            "description": "Email verification with token"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile has required fields', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('email');",
+                  "    pm.expect(jsonData.data).to.have.property('first_name');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/users/profile",
+            "description": "Get current user's profile"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"company_name\": \"Updated Company Inc\",\n  \"phone\": \"+1987654321\"\n}"
+            },
+            "url": "{{baseUrl}}/users/profile",
+            "description": "Update user profile"
+          }
+        },
+        {
+          "name": "Change Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 or 400', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"{{testPassword}}\",\n  \"new_password\": \"NewSecurePass789!\"\n}"
+            },
+            "url": "{{baseUrl}}/users/change-password",
+            "description": "Change password (must meet password policy)"
+          }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/users/account",
+            "description": "Delete user account (irreversible)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Addresses",
+      "item": [
+        {
+          "name": "List Addresses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/addresses",
+            "description": "List all user addresses"
+          }
+        },
+        {
+          "name": "Create Address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('addressId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address_label\": \"Warehouse\",\n  \"address_type\": \"source\",\n  \"is_default\": true,\n  \"company_name\": \"Acme Shipping Inc\",\n  \"street_address_1\": \"123 Main Street\",\n  \"street_address_2\": \"Suite 100\",\n  \"city\": \"New York\",\n  \"state_province\": \"NY\",\n  \"postal_code\": \"10001\",\n  \"country\": \"US\",\n  \"phone\": \"+1234567890\"\n}"
+            },
+            "url": "{{baseUrl}}/addresses",
+            "description": "Create a new address"
+          }
+        },
+        {
+          "name": "Get Address",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{addressId}}"
+                }
+              ]
+            },
+            "description": "Get address by ID"
+          }
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address_label\": \"Main Office\",\n  \"street_address_1\": \"456 Business Ave\",\n  \"city\": \"Los Angeles\",\n  \"state_province\": \"CA\",\n  \"postal_code\": \"90001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/addresses/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{addressId}}"
+                }
+              ]
+            },
+            "description": "Update an existing address"
+          }
+        },
+        {
+          "name": "Set Default Address",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/:id/set-default",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", ":id", "set-default"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{addressId}}"
+                }
+              ]
+            },
+            "description": "Set an address as default"
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/addresses/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["addresses", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{addressId}}"
+                }
+              ]
+            },
+            "description": "Delete an address"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Carriers",
+      "item": [
+        {
+          "name": "List Carriers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is array', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/carriers",
+            "description": "List all supported carriers (FedEx, UPS, USPS, DHL)"
+          }
+        },
+        {
+          "name": "Get Carrier",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carriers/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["carriers", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "fedex"
+                }
+              ]
+            },
+            "description": "Get carrier details by ID"
+          }
+        },
+        {
+          "name": "Get Carrier Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carriers/:id/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["carriers", ":id", "services"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "fedex"
+                }
+              ]
+            },
+            "description": "Get available services for a carrier"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Carrier Credentials",
+      "item": [
+        {
+          "name": "List Credentials",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carrier-credentials?active_only=true&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["carrier-credentials"],
+              "query": [
+                {
+                  "key": "active_only",
+                  "value": "true"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "List carrier credentials"
+          }
+        },
+        {
+          "name": "Create FedEx Credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('credentialId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carrier\": \"fedex\",\n  \"client_id\": \"your-fedex-client-id\",\n  \"client_secret\": \"your-fedex-client-secret\",\n  \"account_numbers\": [\"123456789\"],\n  \"selected_service_ids\": []\n}"
+            },
+            "url": "{{baseUrl}}/carrier-credentials",
+            "description": "Create FedEx API credentials (encrypted at rest)"
+          }
+        },
+        {
+          "name": "Get Credential",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carrier-credentials/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["carrier-credentials", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{credentialId}}"
+                }
+              ]
+            },
+            "description": "Get credential by ID"
+          }
+        },
+        {
+          "name": "Update Credential",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"client_id\": \"updated-client-id\",\n  \"client_secret\": \"updated-client-secret\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/carrier-credentials/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["carrier-credentials", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{credentialId}}"
+                }
+              ]
+            },
+            "description": "Update credential"
+          }
+        },
+        {
+          "name": "Validate Credential",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carrier-credentials/:id/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["carrier-credentials", ":id", "validate"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{credentialId}}"
+                }
+              ]
+            },
+            "description": "Validate credential with carrier API"
+          }
+        },
+        {
+          "name": "Delete Credential",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/carrier-credentials/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["carrier-credentials", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{credentialId}}"
+                }
+              ]
+            },
+            "description": "Delete credential"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rates & Shipments",
+      "item": [
+        {
+          "name": "Compare Rates",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"street_address_1\": \"123 Main Street\",\n    \"city\": \"New York\",\n    \"state_province\": \"NY\",\n    \"postal_code\": \"10001\",\n    \"country\": \"US\"\n  },\n  \"destination\": {\n    \"street_address_1\": \"456 Oak Avenue\",\n    \"city\": \"Los Angeles\",\n    \"state_province\": \"CA\",\n    \"postal_code\": \"90001\",\n    \"country\": \"US\"\n  },\n  \"packages\": [\n    {\n      \"weight\": 5,\n      \"length\": 10,\n      \"width\": 8,\n      \"height\": 6\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/shipments/rates/compare",
+            "description": "Compare rates across all carriers"
+          }
+        },
+        {
+          "name": "Get Shipping Rates (Sync)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin_address_id\": \"{{addressId}}\",\n  \"destination_address_id\": \"destination-address-uuid\",\n  \"package\": {\n    \"weight\": 5,\n    \"length\": 10,\n    \"width\": 8,\n    \"height\": 6,\n    \"weight_unit\": \"lb\",\n    \"dimension_unit\": \"in\"\n  },\n  \"service_type\": \"ground\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shipments/rates?async=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipments", "rates"],
+              "query": [
+                {
+                  "key": "async",
+                  "value": "false"
+                }
+              ]
+            },
+            "description": "Get shipping rates synchronously"
+          }
+        },
+        {
+          "name": "Get Shipping Rates (Async)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 202', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.jobId) {",
+                  "    pm.collectionVariables.set('jobId', jsonData.data.jobId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin_address_id\": \"{{addressId}}\",\n  \"destination_address_id\": \"destination-address-uuid\",\n  \"package\": {\n    \"weight\": 5,\n    \"length\": 10,\n    \"width\": 8,\n    \"height\": 6,\n    \"weight_unit\": \"lb\",\n    \"dimension_unit\": \"in\"\n  },\n  \"service_type\": \"ground\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shipments/rates?async=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipments", "rates"],
+              "query": [
+                {
+                  "key": "async",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Get shipping rates asynchronously (returns job ID)"
+          }
+        },
+        {
+          "name": "Get Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shipments/rates/job/:jobId",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipments", "rates", "job", ":jobId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "{{jobId}}"
+                }
+              ]
+            },
+            "description": "Get async job status"
+          }
+        },
+        {
+          "name": "Get Rate History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shipments/rates/history?origin_zip=10001&destination_zip=90001&days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipments", "rates", "history"],
+              "query": [
+                {
+                  "key": "origin_zip",
+                  "value": "10001"
+                },
+                {
+                  "key": "destination_zip",
+                  "value": "90001"
+                },
+                {
+                  "key": "days",
+                  "value": "30"
+                }
+              ]
+            },
+            "description": "Get rate history for a route"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Checks",
+      "item": [
+        {
+          "name": "List Checks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/checks",
+            "description": "List all checks"
+          }
+        },
+        {
+          "name": "Create Check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Check\",\n  \"description\": \"A test check entry\",\n  \"status\": \"active\"\n}"
+            },
+            "url": "{{baseUrl}}/checks",
+            "description": "Create a check"
+          }
+        },
+        {
+          "name": "Get Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/checks/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["checks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "check-uuid"
+                }
+              ]
+            },
+            "description": "Get check by ID"
+          }
+        },
+        {
+          "name": "Update Check",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Check\",\n  \"status\": \"inactive\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checks/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["checks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "check-uuid"
+                }
+              ]
+            },
+            "description": "Update a check"
+          }
+        },
+        {
+          "name": "Delete Check",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/checks/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["checks", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "check-uuid"
+                }
+              ]
+            },
+            "description": "Delete a check"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs",
+      "item": [
+        {
+          "name": "Get My Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/my-logs?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "my-logs"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get user's recent API request logs"
+          }
+        },
+        {
+          "name": "Get Errors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/errors?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "errors"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get failed API requests"
+          }
+        },
+        {
+          "name": "Get Carrier Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/carrier-stats/:carrier",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "carrier-stats", ":carrier"],
+              "variable": [
+                {
+                  "key": "carrier",
+                  "value": "fedex"
+                }
+              ]
+            },
+            "description": "Get carrier performance statistics"
+          }
+        },
+        {
+          "name": "Search Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/search?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "search"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Search logs with filters"
+          }
+        }
+      ]
+    }
+  ]
+}
