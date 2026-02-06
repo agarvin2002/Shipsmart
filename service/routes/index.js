@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const checkRoutes = require('./check');
 const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const addressRoutes = require('./address');
@@ -13,7 +12,6 @@ const HealthController = require('../controller/health-controller');
 // Health check endpoint
 router.get('/health', HealthController.getHealth);
 
-router.use('/', checkRoutes);
 router.use('/', authRoutes);
 router.use('/', userRoutes);
 router.use('/', addressRoutes);

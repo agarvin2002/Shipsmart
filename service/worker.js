@@ -2,7 +2,6 @@ global.logger = require('@shipsmart/logger').application('worker');
 
 const workerClient = require('./worker-client');
 const { WorkerJobs } = require('@shipsmart/constants');
-const CheckCreationConsumer = require('./workers/consumers/check-creation-consumer');
 const RateFetchConsumer = require('./workers/consumers/rate-fetch-consumer');
 const ApiLogConsumer = require('./workers/consumers/api-log-consumer');
 const CarrierApiLogConsumer = require('./workers/consumers/carrier-api-log-consumer');
@@ -17,15 +16,7 @@ const start = async () => {
   // Initialize scheduled jobs
   const logCleanupJob = require('./jobs/log-cleanup-job');
 
-  const checkConcurrency = 2;
   const rateFetchConcurrency = 5;
-
-  const queue = workerClient.getQueue(WorkerJobs.CHECK_CREATION);
-  queue.process(checkConcurrency, async (job) => {
-    return await CheckCreationConsumer.perform(job);
-  });
-
-  logger.info(`Worker subscribed to ${WorkerJobs.CHECK_CREATION} queue with concurrency ${checkConcurrency}`);
 
   const rateFetchQueue = workerClient.getQueue(WorkerJobs.RATE_FETCH);
   rateFetchQueue.process(rateFetchConcurrency, async (job) => {
@@ -68,7 +59,6 @@ const start = async () => {
       logCleanupJob.stop();
 
       const queues = [
-        workerClient.getQueue(WorkerJobs.CHECK_CREATION),
         workerClient.getQueue(WorkerJobs.RATE_FETCH),
         workerClient.getQueue(WorkerJobs.API_LOG),
         workerClient.getQueue(WorkerJobs.CARRIER_API_LOG)
