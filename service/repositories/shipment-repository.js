@@ -1,4 +1,5 @@
 const { Shipment, UserAddress, Rate } = require('../models');
+const { PAGINATION } = require('@shipsmart/constants');
 
 class ShipmentRepository {
   async create(shipmentData) {
@@ -16,7 +17,7 @@ class ShipmentRepository {
   }
 
   async findByUserId(userId, options = {}) {
-    const { limit = 50, offset = 0, status = null } = options;
+    const { limit = PAGINATION.DEFAULT_LIMIT, offset = PAGINATION.DEFAULT_OFFSET, status = null } = options;
 
     const where = { user_id: userId };
     if (status) {

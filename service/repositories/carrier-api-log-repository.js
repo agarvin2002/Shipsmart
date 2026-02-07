@@ -14,6 +14,7 @@
 const { CarrierApiLog } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../models').sequelize;
+const { PAGINATION } = require('@shipsmart/constants');
 
 class CarrierApiLogRepository {
   /**
@@ -80,7 +81,7 @@ class CarrierApiLogRepository {
    * @returns {Promise<CarrierApiLog[]>} Array of carrier logs
    */
   async findByCarrier(carrier, options = {}) {
-    const { limit = 50, userId, startDate, endDate } = options;
+    const { limit = PAGINATION.LOG_ENTRIES_LIMIT, userId, startDate, endDate } = options;
     const where = { carrier };
 
     if (userId) where.user_id = userId;
@@ -104,7 +105,7 @@ class CarrierApiLogRepository {
    * @returns {Promise<CarrierApiLog[]>} Array of error logs
    */
   async findErrors(options = {}) {
-    const { limit = 50, carrier, userId } = options;
+    const { limit = PAGINATION.LOG_ENTRIES_LIMIT, carrier, userId } = options;
     const where = { error_type: { [Op.ne]: null } };
 
     if (carrier) where.carrier = carrier;
@@ -188,7 +189,7 @@ class CarrierApiLogRepository {
    * @param {number} limit - Number of results to return
    * @returns {Promise<CarrierApiLog[]>} Array of logs sorted by query_count
    */
-  async getMostQueried(userId, carrier = null, limit = 10) {
+  async getMostQueried(userId, carrier = null, limit = PAGINATION.TOP_QUERIES_LIMIT) {
     const where = { user_id: userId };  // CRITICAL: Multi-tenancy filter
     if (carrier) where.carrier = carrier;
 

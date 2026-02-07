@@ -1,5 +1,6 @@
 const { RateHistory } = require('../models');
 const { Op } = require('sequelize');
+const { PAGINATION } = require('@shipsmart/constants');
 
 class RateHistoryRepository {
   async create(historyData) {
@@ -11,7 +12,7 @@ class RateHistoryRepository {
   }
 
   async findByRoute(originZip, destinationZip, userId, options = {}) {
-    const { carrier = null, limit = 100, days = 30 } = options;
+    const { carrier = null, limit = PAGINATION.RATE_HISTORY_LIMIT, days = 30 } = options;
 
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - days);
@@ -58,7 +59,7 @@ class RateHistoryRepository {
   }
 
   async findByUserId(userId, options = {}) {
-    const { limit = 100, offset = 0, days = 30 } = options;
+    const { limit = PAGINATION.RATE_HISTORY_LIMIT, offset = PAGINATION.DEFAULT_OFFSET, days = 30 } = options;
 
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - days);
