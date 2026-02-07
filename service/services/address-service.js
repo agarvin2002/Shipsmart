@@ -1,7 +1,6 @@
 /* global logger */
 const AddressRepository = require('../repositories/address-repository');
-const NotFoundError = require('../errors/not-found-error');
-const ValidationError = require('../errors/validation-error');
+const { NotFoundError, ValidationError } = require('@shipsmart/errors');
 
 class AddressService {
   constructor() {

@@ -13,8 +13,7 @@ const UserRepository = require('../../../repositories/user-repository');
 const SessionRepository = require('../../../repositories/session-repository');
 const JwtHelper = require('../../../helpers/jwt-helper');
 const bcrypt = require('bcrypt');
-const ValidationError = require('../../../errors/validation-error');
-const AuthenticationError = require('../../../errors/authentication-error');
+const { ValidationError, AuthenticationError } = require('@shipsmart/errors');
 
 // Mock all dependencies
 jest.mock('../../../repositories/user-repository');

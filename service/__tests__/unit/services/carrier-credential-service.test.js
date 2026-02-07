@@ -18,8 +18,7 @@ const CarrierCredentialService = require('../../../services/carrier-credential-s
 const CarrierCredentialRepository = require('../../../repositories/carrier-credential-repository');
 const CryptoHelper = require('../../../helpers/crypto-helper');
 const CarrierRouter = require('../../../lib/carrier-router');
-const NotFoundError = require('../../../errors/not-found-error');
-const ValidationError = require('../../../errors/validation-error');
+const { NotFoundError, ValidationError } = require('@shipsmart/errors');
 const { createMockCarrierCredential } = require('../../utils/test-helpers');
 
 describe('CarrierCredentialService', () => {

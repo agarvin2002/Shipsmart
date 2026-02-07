@@ -2,8 +2,7 @@
 const bcrypt = require('bcrypt');
 const UserRepository = require('../repositories/user-repository');
 const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
-const NotFoundError = require('../errors/not-found-error');
-const AuthenticationError = require('../errors/authentication-error');
+const { NotFoundError, AuthenticationError } = require('@shipsmart/errors');
 
 class UserService {
   constructor() {

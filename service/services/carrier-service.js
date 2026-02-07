@@ -1,6 +1,6 @@
 /* global logger */
 const CarrierRepository = require('../repositories/carrier-repository');
-const NotFoundError = require('../errors/not-found-error');
+const { NotFoundError } = require('@shipsmart/errors');
 
 class CarrierService {
   constructor() {
