@@ -5,6 +5,10 @@ const {
   CARRIER_API_URLS,
   CARRIER_DEFAULTS,
 } = require('./lib/carriers');
+const {
+  TIMEOUTS,
+  RATE_LIMIT_WINDOWS,
+} = require('./lib/timeouts');
 
 module.exports = {
   HTTP_STATUS: {
@@ -26,4 +30,8 @@ module.exports = {
   CARRIER_NAMES,
   CARRIER_API_URLS,
   CARRIER_DEFAULTS,
+
+  // Timeouts
+  TIMEOUTS,
+  RATE_LIMIT_WINDOWS,
 };

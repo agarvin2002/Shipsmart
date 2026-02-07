@@ -2,7 +2,7 @@
 const axios = require('axios');
 const cls = require('cls-hooked');
 const { getWorkerProducer } = require('../../workers/utils/producer');
-const { WorkerJobs } = require('@shipsmart/constants');
+const { WorkerJobs, TIMEOUTS } = require('@shipsmart/constants');
 
 // Get the existing CLS namespace
 const namespace = cls.getNamespace('shipsmart_sequel_trans');
@@ -15,13 +15,13 @@ class BaseCarrierProxy {
     if (carrierConfig && typeof carrierConfig === 'object' && carrierConfig.base_url) {
       // New DB-driven approach
       this.baseUrl = carrierConfig.base_url;
-      this.timeout = carrierConfig.timeout_ms || 15000;
+      this.timeout = carrierConfig.timeout_ms || TIMEOUTS.CARRIER_API_DEFAULT;
       this.endpoints = carrierConfig.endpoints || {};
       this.headers = carrierConfig.headers || {};
     } else {
       // Legacy approach - carrierConfig is actually baseUrl
       this.baseUrl = carrierConfig || '';
-      this.timeout = arguments[2] || 15000; // Third argument was timeout
+      this.timeout = arguments[2] || TIMEOUTS.CARRIER_API_DEFAULT; // Third argument was timeout
       this.endpoints = {};
       this.headers = {};
     }
