@@ -2,13 +2,14 @@
 const BaseCarrierRateService = require('./base-carrier-rate-service');
 const FedexProxy = require('../../lib/carrier-proxies/fedex-proxy');
 const FedexRateRequestBuilder = require('../../lib/request-builders/fedex-rate-request-builder');
+const { CARRIERS } = require('@shipsmart/constants');
 
 class FedexRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {
     super(carrierCredential);
     // Pass carrier config to proxy if available (DB-driven approach)
     this.proxy = new FedexProxy(this.carrierConfig);
-    this.carrierName = 'fedex';
+    this.carrierName = CARRIERS.FEDEX;
   }
 
   
@@ -152,10 +153,10 @@ class FedexRateService extends BaseCarrierRateService {
     try {
       logger.info('[FedexRateService] Validating credentials');
       await this.proxy.authenticate(this.decryptedCredentials);
-      return { valid: true, carrier: 'fedex' };
+      return { valid: true, carrier: CARRIERS.FEDEX };
     } catch (error) {
       logger.error('[FedexRateService] Credential validation failed', { error: error.message });
-      return { valid: false, carrier: 'fedex', error: error.message };
+      return { valid: false, carrier: CARRIERS.FEDEX, error: error.message };
     }
   }
 }

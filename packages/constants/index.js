@@ -1,4 +1,10 @@
 const WorkerJobs = require('./worker-jobs');
+const {
+  CARRIERS,
+  CARRIER_NAMES,
+  CARRIER_API_URLS,
+  CARRIER_DEFAULTS,
+} = require('./lib/carriers');
 
 module.exports = {
   HTTP_STATUS: {
@@ -14,4 +20,10 @@ module.exports = {
     WORKER: 'shipsmart-worker',
   },
   WorkerJobs,
+
+  // Carriers
+  CARRIERS,
+  CARRIER_NAMES,
+  CARRIER_API_URLS,
+  CARRIER_DEFAULTS,
 };

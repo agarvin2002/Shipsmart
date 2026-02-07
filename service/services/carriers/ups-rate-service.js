@@ -2,13 +2,14 @@
 const BaseCarrierRateService = require('./base-carrier-rate-service');
 const UpsProxy = require('../../lib/carrier-proxies/ups-proxy');
 const UpsRateRequestBuilder = require('../../lib/request-builders/ups-rate-request-builder');
+const { CARRIERS } = require('@shipsmart/constants');
 
 class UpsRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {
     super(carrierCredential);
     // Pass carrier config to proxy if available (DB-driven approach)
     this.proxy = new UpsProxy(this.carrierConfig);
-    this.carrierName = 'ups';
+    this.carrierName = CARRIERS.UPS;
   }
 
   
@@ -176,10 +177,10 @@ class UpsRateService extends BaseCarrierRateService {
     try {
       logger.info('[UpsRateService] Validating credentials');
       await this.proxy.authenticate(this.decryptedCredentials);
-      return { valid: true, carrier: 'ups' };
+      return { valid: true, carrier: CARRIERS.UPS };
     } catch (error) {
       logger.error('[UpsRateService] Credential validation failed', { error: error.message });
-      return { valid: false, carrier: 'ups', error: error.message };
+      return { valid: false, carrier: CARRIERS.UPS, error: error.message };
     }
   }
 }
