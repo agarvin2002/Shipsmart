@@ -3,6 +3,7 @@ const { CarrierCredential, Carrier, CarrierService } = require('../models');
 const FedexRateService = require('../services/carriers/fedex-rate-service');
 const UpsRateService = require('../services/carriers/ups-rate-service');
 const UspsRateService = require('../services/carriers/usps-rate-service');
+const DhlRateService = require('../services/carriers/dhl-rate-service');
 const { CARRIERS, CREDENTIAL_STATUS } = require('@shipsmart/constants');
 
 class CarrierRouter {
@@ -125,7 +126,7 @@ class CarrierRouter {
       [CARRIERS.FEDEX]: FedexRateService,
       [CARRIERS.UPS]: UpsRateService,
       [CARRIERS.USPS]: UspsRateService,
-      // [CARRIERS.DHL]: DhlRateService, // Future implementation
+      [CARRIERS.DHL]: DhlRateService,
     };
 
     const ServiceClass = serviceMap[carrierName.toLowerCase()];

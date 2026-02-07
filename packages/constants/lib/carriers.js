@@ -17,13 +17,13 @@ const CARRIER_API_URLS = {
     [CARRIERS.FEDEX]: 'https://apis-sandbox.fedex.com',
     [CARRIERS.UPS]: 'https://wwwcie.ups.com',
     [CARRIERS.USPS]: 'https://apis-tem.usps.com',
-    [CARRIERS.DHL]: 'https://api-sandbox.dhl.com',
+    [CARRIERS.DHL]: 'https://express.api.dhl.com/mydhlapi/test',
   },
   PRODUCTION: {
     [CARRIERS.FEDEX]: 'https://apis.fedex.com',
     [CARRIERS.UPS]: 'https://onlinetools.ups.com',
     [CARRIERS.USPS]: 'https://secure.shippingapis.com',
-    [CARRIERS.DHL]: 'https://api.dhl.com',
+    [CARRIERS.DHL]: 'https://express.api.dhl.com/mydhlapi',
   },
 };
 
