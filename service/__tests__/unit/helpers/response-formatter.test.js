@@ -2,7 +2,7 @@
  * ResponseFormatter Unit Tests
  */
 
-const ResponseFormatter = require('../../../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 
 describe('ResponseFormatter', () => {
   describe('.formatValidationError', () => {

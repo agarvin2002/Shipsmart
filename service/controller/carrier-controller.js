@@ -2,7 +2,7 @@
 const CarrierService = require('../services/carrier-service');
 const CarrierValidator = require('../validators/carrier-validator');
 const CarrierPresenter = require('../presenters/carrier-presenter');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 
 class CarrierController {
   

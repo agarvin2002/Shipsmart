@@ -2197,6 +2197,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@shipsmart/http@workspace:packages/http":
+  version: 0.0.0-use.local
+  resolution: "@shipsmart/http@workspace:packages/http"
+  languageName: unknown
+  linkType: soft
+
 "@shipsmart/logger@1.0.0, @shipsmart/logger@workspace:packages/logger":
   version: 0.0.0-use.local
   resolution: "@shipsmart/logger@workspace:packages/logger"

@@ -13,7 +13,7 @@ jest.mock('uuid', () => ({
 jest.mock('../../../services/rate-service');
 jest.mock('../../../validators/rate-validator');
 jest.mock('../../../presenters/rate-presenter');
-jest.mock('../../../helpers/response-formatter');
+jest.mock('@shipsmart/http');
 jest.mock('../../../workers/utils/producer');
 jest.mock('../../../worker-client');
 
@@ -21,7 +21,7 @@ const RateController = require('../../../controller/rate-controller');
 const RateService = require('../../../services/rate-service');
 const RateValidator = require('../../../validators/rate-validator');
 const RatePresenter = require('../../../presenters/rate-presenter');
-const ResponseFormatter = require('../../../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const { getWorkerProducer } = require('../../../workers/utils/producer');
 const workerClient = require('../../../worker-client');
 const { createMockRequest, createMockResponse } = require('../../utils/test-helpers');

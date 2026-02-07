@@ -1,7 +1,7 @@
 /* global logger */
 const AddressService = require('../services/address-service');
 const AddressValidator = require('../validators/address-validator');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const AddressPresenter = require('../presenters/address-presenter');
 
 class AddressController {

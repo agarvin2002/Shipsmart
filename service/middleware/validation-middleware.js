@@ -1,5 +1,5 @@
 /* global logger */
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 
 /**
  * Validation Middleware

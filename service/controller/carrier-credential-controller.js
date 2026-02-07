@@ -1,7 +1,7 @@
 /* global logger */
 const CarrierCredentialService = require('../services/carrier-credential-service');
 const CarrierCredentialValidator = require('../validators/carrier-credential-validator');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const CarrierCredentialPresenter = require('../presenters/carrier-credential-presenter');
 
 class CarrierCredentialController {

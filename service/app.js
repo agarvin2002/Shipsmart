@@ -132,7 +132,7 @@ app.use((req, res, next) => {
 
 app.use('/api/', apiRouter);
 
-const ResponseFormatter = require('./helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 
 // Sentry error handler - captures errors before they're handled
 app.use(SentryHelper.errorHandler());

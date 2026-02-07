@@ -12,13 +12,13 @@ jest.mock('uuid', () => ({
 // Mock dependencies
 jest.mock('../../../services/auth-service');
 jest.mock('../../../validators/auth-validator');
-jest.mock('../../../helpers/response-formatter');
+jest.mock('@shipsmart/http');
 jest.mock('../../../presenters/auth-presenter');
 
 const AuthController = require('../../../controller/auth-controller');
 const AuthService = require('../../../services/auth-service');
 const AuthValidator = require('../../../validators/auth-validator');
-const ResponseFormatter = require('../../../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const AuthPresenter = require('../../../presenters/auth-presenter');
 const { createMockRequest, createMockResponse } = require('../../utils/test-helpers');
 

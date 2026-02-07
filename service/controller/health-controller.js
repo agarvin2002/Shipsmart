@@ -1,5 +1,5 @@
 const healthService = require('../services/health-service');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 
 class HealthController {
   async getHealth(req, res, next) {
