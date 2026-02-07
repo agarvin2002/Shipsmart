@@ -4,6 +4,7 @@ const UserRepository = require('../repositories/user-repository');
 const SessionRepository = require('../repositories/session-repository');
 const JwtHelper = require('../helpers/jwt-helper');
 const { ValidationError, AuthenticationError } = require('@shipsmart/errors');
+const { USER_STATUS } = require('@shipsmart/constants');
 
 class AuthService {
   constructor() {
@@ -46,7 +47,7 @@ class AuthService {
         throw new AuthenticationError('Invalid credentials');
       }
 
-      if (user.status !== 'active') {
+      if (user.status !== USER_STATUS.ACTIVE) {
         throw new AuthenticationError('Account is inactive or suspended');
       }
 

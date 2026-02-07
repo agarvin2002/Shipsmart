@@ -3,7 +3,7 @@ const { CarrierCredential, Carrier, CarrierService } = require('../models');
 const FedexRateService = require('../services/carriers/fedex-rate-service');
 const UpsRateService = require('../services/carriers/ups-rate-service');
 const UspsRateService = require('../services/carriers/usps-rate-service');
-const { CARRIERS } = require('@shipsmart/constants');
+const { CARRIERS, CREDENTIAL_STATUS } = require('@shipsmart/constants');
 
 class CarrierRouter {
   
@@ -15,7 +15,7 @@ class CarrierRouter {
         where: {
           user_id: userId,
           is_active: true,
-          validation_status: 'valid',
+          validation_status: CREDENTIAL_STATUS.VALID,
         },
         order: [['carrier', 'ASC']],
       });
