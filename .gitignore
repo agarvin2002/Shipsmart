@@ -114,7 +114,6 @@ dist
 .DS_Store
 
 # Project-specific
-docs/
 sample-requests/
 
 # Postman desktop app workspace metadata
