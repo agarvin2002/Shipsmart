@@ -1,7 +1,9 @@
 /* global logger */
 const CarrierRouter = require('../../lib/carrier-router');
 const RedisWrapper = require('@shipsmart/redis');
-const { Rate, RateHistory, UserAddress } = require('../../models');
+const AddressRepository = require('../../repositories/address-repository');
+const PackageNormalizer = require('../../helpers/package-normalizer');
+const { Rate, RateHistory } = require('../../models');
 const cls = require('cls-hooked');
 
 // Get the existing CLS namespace
@@ -11,6 +13,7 @@ class CarrierRateOrchestrator {
   constructor() {
     this.cacheKeyPrefix = 'RATE';
     this.defaultCacheTTL = 300; // 5 minutes
+    this.addressRepository = new AddressRepository();
   }
 
   
@@ -43,7 +46,7 @@ class CarrierRateOrchestrator {
       }
 
       // 3. Enrich shipment data with full address details
-      const enrichedData = await this.enrichShipmentData(shipmentData);
+      const enrichedData = await this.enrichShipmentData(userId, shipmentData);
 
       // 4. Get available carriers for this user
       const carriers = await CarrierRouter.getAvailableCarriers(userId, enrichedData);
@@ -170,14 +173,14 @@ class CarrierRateOrchestrator {
     return originCountry !== destinationCountry;
   }
 
-  
-  async enrichShipmentData(shipmentData) {
+
+  async enrichShipmentData(userId, shipmentData) {
     try {
       const { origin_address_id, destination_address_id, package: pkg, packages } = shipmentData;
 
-      // Fetch full address details if only IDs provided
+      // Fetch full address details if only IDs provided - CRITICAL: Validate user ownership
       if (origin_address_id && !shipmentData.origin) {
-        const origin = await UserAddress.findByPk(origin_address_id);
+        const origin = await this.addressRepository.findById(origin_address_id, userId);
         if (!origin) {
           throw new Error(`Origin address not found: ${origin_address_id}`);
         }
@@ -185,7 +188,7 @@ class CarrierRateOrchestrator {
       }
 
       if (destination_address_id && !shipmentData.destination) {
-        const destination = await UserAddress.findByPk(destination_address_id);
+        const destination = await this.addressRepository.findById(destination_address_id, userId);
         if (!destination) {
           throw new Error(`Destination address not found: ${destination_address_id}`);
         }
@@ -194,22 +197,14 @@ class CarrierRateOrchestrator {
 
       // Normalize package dimensions - support both single package and multiple packages
       const packageList = packages || (pkg ? [pkg] : []);
+      const normalizedPackages = PackageNormalizer.normalize(packageList);
 
-      packageList.forEach(p => {
-        if (p.length && p.width && p.height && !p.dimensions) {
-          // Flat format: move dimensions into nested object
-          p.dimensions = {
-            length: p.length,
-            width: p.width,
-            height: p.height,
-          };
-        } else if (p.dimensions && !p.length) {
-          // Nested format: flatten dimensions
-          p.length = p.dimensions.length;
-          p.width = p.dimensions.width;
-          p.height = p.dimensions.height;
-        }
-      });
+      // Update shipmentData with normalized packages
+      if (packages) {
+        shipmentData.packages = normalizedPackages;
+      } else if (pkg) {
+        shipmentData.package = normalizedPackages[0];
+      }
 
       return shipmentData;
     } catch (error) {

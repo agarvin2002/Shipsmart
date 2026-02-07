@@ -1,8 +1,10 @@
 const { UserAddress } = require('../models');
 
 class AddressRepository {
-  async findById(id) {
-    return await UserAddress.findByPk(id);
+  async findById(id, userId) {
+    return await UserAddress.findOne({
+      where: { id, user_id: userId },
+    });
   }
 
   async findByUserId(userId) {
@@ -41,14 +43,18 @@ class AddressRepository {
     return await UserAddress.create(addressData);
   }
 
-  async update(id, addressData) {
-    const address = await UserAddress.findByPk(id);
+  async update(id, userId, addressData) {
+    const address = await UserAddress.findOne({
+      where: { id, user_id: userId },
+    });
     if (!address) return null;
     return await address.update(addressData);
   }
 
-  async delete(id) {
-    const address = await UserAddress.findByPk(id);
+  async delete(id, userId) {
+    const address = await UserAddress.findOne({
+      where: { id, user_id: userId },
+    });
     if (!address) return null;
     await address.destroy();
     return { message: 'Address deleted successfully' };
@@ -71,8 +77,11 @@ class AddressRepository {
   async setDefault(id, userId) {
     const sequelize = UserAddress.sequelize;
     return await sequelize.transaction(async (t) => {
-      // Get the address to determine its type
-      const address = await UserAddress.findByPk(id, { transaction: t });
+      // Get the address to determine its type - CRITICAL: Validate ownership
+      const address = await UserAddress.findOne({
+        where: { id, user_id: userId },
+        transaction: t,
+      });
       if (!address) return null;
 
       // Only unset defaults for the same type (source)

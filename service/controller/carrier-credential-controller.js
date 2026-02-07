@@ -1,7 +1,7 @@
 /* global logger */
 const CarrierCredentialService = require('../services/carrier-credential-service');
 const CarrierCredentialValidator = require('../validators/carrier-credential-validator');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const CarrierCredentialPresenter = require('../presenters/carrier-credential-presenter');
 
 class CarrierCredentialController {
@@ -51,7 +51,7 @@ class CarrierCredentialController {
       }
 
       logger.info(`Successfully fetched credential with id: ${req.params.id}`);
-      const response = CarrierCredentialPresenter.presentWithCredentials(credential);
+      const response = CarrierCredentialPresenter.present(credential);
       res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error(`Exception in getCredentialById: ${error.message}`, { stack: error.stack });
@@ -82,7 +82,7 @@ class CarrierCredentialController {
       }
 
       logger.info(`Successfully created ${credential.carrier} credential for user: ${req.user.userId}`);
-      const response = CarrierCredentialPresenter.presentWithCredentials(credential);
+      const response = CarrierCredentialPresenter.present(credential);
       res.status(201).send(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error(`Exception in createCredential: ${error.message}`, { stack: error.stack });
@@ -110,7 +110,7 @@ class CarrierCredentialController {
       }
 
       logger.info(`Successfully updated credential with id: ${req.params.id}`);
-      const response = CarrierCredentialPresenter.presentWithCredentials(credential);
+      const response = CarrierCredentialPresenter.present(credential);
       res.status(200).send(ResponseFormatter.formatSuccess(response, req.id));
     } catch (error) {
       logger.error(`Exception in updateCredential: ${error.message}`, { stack: error.stack });

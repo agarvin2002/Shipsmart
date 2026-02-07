@@ -15,23 +15,23 @@ mkdir -p ./logs
 killall -9 /usr/bin/node
 npx pm2 delete all
 
-# Start PM2 processes with explicit log files
+# Start PM2 processes (logs handled by Winston, PM2 logs disabled)
 npx pm2 start service/bin/server --update-env \
   --name shipsmart-api \
-  --error ./logs/api-error.log \
-  --output ./logs/api-out.log \
+  --error /dev/null \
+  --output /dev/null \
   --time
 
 npx pm2 start service/bin/worker --update-env \
   --name shipsmart-worker \
-  --error ./logs/worker-error.log \
-  --output ./logs/worker-out.log \
+  --error /dev/null \
+  --output /dev/null \
   --time
 
 npx pm2 start service/bin/arena --update-env \
   --name shipsmart-arena \
-  --error ./logs/arena-error.log \
-  --output ./logs/arena-out.log \
+  --error /dev/null \
+  --output /dev/null \
   --time
 
 # Save PM2 process list

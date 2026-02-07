@@ -181,14 +181,15 @@ class CarrierApiLogRepository {
   }
 
   /**
-   * Get most frequently queried carrier+shipment combinations
+   * Get most frequently queried carrier+shipment combinations for a specific user
    *
+   * @param {string} userId - User ID to filter by
    * @param {string} carrier - Optional carrier filter
    * @param {number} limit - Number of results to return
    * @returns {Promise<CarrierApiLog[]>} Array of logs sorted by query_count
    */
-  async getMostQueried(carrier = null, limit = 10) {
-    const where = {};
+  async getMostQueried(userId, carrier = null, limit = 10) {
+    const where = { user_id: userId };  // CRITICAL: Multi-tenancy filter
     if (carrier) where.carrier = carrier;
 
     return await CarrierApiLog.findAll({

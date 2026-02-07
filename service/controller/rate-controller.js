@@ -2,7 +2,7 @@
 const RateService = require('../services/rate-service');
 const RateValidator = require('../validators/rate-validator');
 const RatePresenter = require('../presenters/rate-presenter');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const { WorkerJobs } = require('@shipsmart/constants');
 const { getWorkerProducer } = require('../workers/utils/producer');
 const workerClient = require('../worker-client');

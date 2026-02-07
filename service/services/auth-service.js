@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const UserRepository = require('../repositories/user-repository');
 const SessionRepository = require('../repositories/session-repository');
 const JwtHelper = require('../helpers/jwt-helper');
+const { ValidationError, AuthenticationError } = require('@shipsmart/errors');
 
 class AuthService {
   constructor() {
@@ -14,7 +15,7 @@ class AuthService {
     try {
       const existingUser = await this.userRepository.findByEmail(userData.email);
       if (existingUser) {
-        return { error: 'Email already registered' };
+        throw new ValidationError('Email already registered');
       }
 
       const passwordHash = await bcrypt.hash(userData.password, 10);
@@ -42,16 +43,16 @@ class AuthService {
     try {
       const user = await this.userRepository.findByEmail(email);
       if (!user) {
-        return { error: 'Invalid credentials' };
+        throw new AuthenticationError('Invalid credentials');
       }
 
       if (user.status !== 'active') {
-        return { error: 'Account is inactive or suspended' };
+        throw new AuthenticationError('Account is inactive or suspended');
       }
 
       const isValid = await bcrypt.compare(password, user.password_hash);
       if (!isValid) {
-        return { error: 'Invalid credentials' };
+        throw new AuthenticationError('Invalid credentials');
       }
 
       const accessTokenData = JwtHelper.generateAccessToken(user);
@@ -119,12 +120,16 @@ class AuthService {
     try {
       const user = await this.userRepository.findByResetToken(token);
       if (!user || !user.password_reset_expires_at || new Date() > user.password_reset_expires_at) {
-        return { error: 'Invalid or expired reset token' };
+        throw new AuthenticationError('Invalid or expired reset token');
       }
 
       const newPasswordHash = await bcrypt.hash(newPassword, 10);
       await this.userRepository.updatePassword(user.id, newPasswordHash);
       await this.userRepository.clearResetToken(user.id);
+
+      // SECURITY: Revoke all existing sessions after password reset
+      await this.sessionRepository.revokeAllByUserId(user.id);
+      logger.info('All sessions revoked after password reset', { userId: user.id });
 
       return { message: 'Password reset successfully' };
     } catch (error) {
@@ -137,7 +142,7 @@ class AuthService {
     try {
       const user = await this.userRepository.findByVerificationToken(token);
       if (!user) {
-        return { error: 'Invalid verification token' };
+        throw new AuthenticationError('Invalid verification token');
       }
 
       await this.userRepository.setEmailVerified(user.id);

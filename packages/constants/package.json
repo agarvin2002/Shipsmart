@@ -1,5 +1,14 @@
 {
   "name": "@shipsmart/constants",
   "version": "1.0.0",
-  "main": "index.js"
+  "description": "Shared constants for ShipSmart services (HTTP status codes, queue names, worker jobs)",
+  "main": "./index.js",
+  "keywords": [
+    "constants",
+    "enums",
+    "http-status",
+    "queue-names"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED"
 }

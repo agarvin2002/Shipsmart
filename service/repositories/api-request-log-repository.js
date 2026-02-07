@@ -147,13 +147,15 @@ class ApiRequestLogRepository {
   }
 
   /**
-   * Get most frequently queried shipments
+   * Get most frequently queried shipments for a specific user
    *
+   * @param {string} userId - User ID to filter by
    * @param {number} limit - Number of results to return
    * @returns {Promise<ApiRequestLog[]>} Array of logs sorted by query_count
    */
-  async getMostQueried(limit = 10) {
+  async getMostQueried(userId, limit = 10) {
     return await ApiRequestLog.findAll({
+      where: { user_id: userId },  // CRITICAL: Multi-tenancy filter
       limit,
       order: [['query_count', 'DESC'], ['last_queried_at', 'DESC']]
     });

@@ -1,5 +1,6 @@
 /* global logger */
 const CarrierRepository = require('../repositories/carrier-repository');
+const { NotFoundError } = require('@shipsmart/errors');
 
 class CarrierService {
   constructor() {
@@ -23,7 +24,7 @@ class CarrierService {
       const carrier = await this.carrierRepository.findById(id);
 
       if (!carrier) {
-        return { error: 'Carrier not found' };
+        throw new NotFoundError('Carrier', 'Carrier not found');
       }
 
       return carrier.toJSON();
@@ -39,7 +40,7 @@ class CarrierService {
       const carrier = await this.carrierRepository.findByCode(code);
 
       if (!carrier) {
-        return { error: 'Carrier not found' };
+        throw new NotFoundError('Carrier', 'Carrier not found');
       }
 
       return carrier.toJSON();
@@ -56,7 +57,7 @@ class CarrierService {
       const carrier = await this.carrierRepository.findById(carrierId);
 
       if (!carrier) {
-        return { error: 'Carrier not found' };
+        throw new NotFoundError('Carrier', 'Carrier not found');
       }
 
       // Get services for this carrier

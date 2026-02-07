@@ -2,6 +2,7 @@
 const bcrypt = require('bcrypt');
 const UserRepository = require('../repositories/user-repository');
 const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
+const { NotFoundError, AuthenticationError } = require('@shipsmart/errors');
 
 class UserService {
   constructor() {
@@ -26,7 +27,7 @@ class UserService {
       const user = await this.userRepository.findById(id);
 
       if (!user) {
-        return { error: 'User not found' };
+        throw new NotFoundError('User', `User with id ${id} not found`);
       }
 
       const userData = user.toJSON();
@@ -57,7 +58,7 @@ class UserService {
     try {
       const user = await this.userRepository.update(id, data);
       if (!user) {
-        return { error: 'User not found' };
+        throw new NotFoundError('User', `User with id ${id} not found`);
       }
 
       const cacheKey = RedisWrapper.getRedisKey(RedisKeys.USER_DATA, { userId: id });
@@ -77,12 +78,12 @@ class UserService {
     try {
       const user = await this.userRepository.findById(id);
       if (!user) {
-        return { error: 'User not found' };
+        throw new NotFoundError('User', `User with id ${id} not found`);
       }
 
       const isValid = await bcrypt.compare(currentPassword, user.password_hash);
       if (!isValid) {
-        return { error: 'Current password is incorrect' };
+        throw new AuthenticationError('Current password is incorrect');
       }
 
       const newHash = await bcrypt.hash(newPassword, 10);
@@ -99,7 +100,7 @@ class UserService {
     try {
       const result = await this.userRepository.softDelete(id);
       if (!result) {
-        return { error: 'User not found' };
+        throw new NotFoundError('User', `User with id ${id} not found`);
       }
 
       const cacheKey = RedisWrapper.getRedisKey(RedisKeys.USER_DATA, { userId: id });
@@ -116,7 +117,7 @@ class UserService {
     try {
       const user = await this.userRepository.findWithAddresses(id);
       if (!user) {
-        return { error: 'User not found' };
+        throw new NotFoundError('User', `User with id ${id} not found`);
       }
 
       const userData = user.toJSON();

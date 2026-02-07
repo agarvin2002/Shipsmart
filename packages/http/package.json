@@ -1,0 +1,14 @@
+{
+  "name": "@shipsmart/http",
+  "version": "1.0.0",
+  "description": "HTTP utilities for ShipSmart services including response formatting",
+  "main": "./index.js",
+  "keywords": [
+    "http",
+    "response",
+    "formatter",
+    "api"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED"
+}

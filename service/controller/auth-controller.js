@@ -1,7 +1,7 @@
 /* global logger */
 const AuthService = require('../services/auth-service');
 const AuthValidator = require('../validators/auth-validator');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const AuthPresenter = require('../presenters/auth-presenter');
 
 class AuthController {

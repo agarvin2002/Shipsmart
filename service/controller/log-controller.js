@@ -1,7 +1,7 @@
 /* global logger */
 
 const LogQueryService = require('../services/log-query-service');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 
 /**
  * LogController

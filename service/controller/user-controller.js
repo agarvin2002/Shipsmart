@@ -1,7 +1,7 @@
 /* global logger */
 const UserService = require('../services/user-service');
 const UserValidator = require('../validators/user-validator');
-const ResponseFormatter = require('../helpers/response-formatter');
+const { ResponseFormatter } = require('@shipsmart/http');
 const UserPresenter = require('../presenters/user-presenter');
 
 class UserController {
