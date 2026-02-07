@@ -6,14 +6,17 @@
     "alwaysInclude": [
       ".claude/CLAUDE.md",
       ".eslintrc.json",
-      "package.json"
+      "package.json",
+      "service/package.json"
     ],
     "excludePatterns": [
       "**/node_modules/**",
       "**/.git/**",
+      "**/.yarn/**",
       "**/logs/**",
       "**/*.log",
       "**/coverage/**",
+      "**/dist/**",
       "**/.DS_Store"
     ]
   },
@@ -21,6 +24,8 @@
     "architectureReminder": "Follow 5-layer pattern: Routes → Controllers → Services → Repositories → Models",
     "multiTenancy": "ALWAYS filter by user_id or customer_id in repositories",
     "encryption": "ALL carrier credentials MUST be encrypted with CryptoHelper",
-    "logging": "NEVER log passwords, tokens, API keys, or sensitive data"
+    "logging": "NEVER log passwords, tokens, API keys, or sensitive data",
+    "constants": "ALWAYS use @shipsmart/constants instead of hardcoded values (carriers, timeouts, status enums, validation limits)",
+    "testing": "Run tests with 'cd service && yarn test' before committing"
   }
 }

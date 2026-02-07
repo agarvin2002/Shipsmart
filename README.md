@@ -2,29 +2,30 @@
 
 <div align="center">
 
-![Node.js](https://img.shields.io/badge/node-v22.x-brightgreen) ![Yarn](https://img.shields.io/badge/yarn-3.6.1-blue) ![PostgreSQL](https://img.shields.io/badge/postgresql-14-blue) ![Redis](https://img.shields.io/badge/redis-7-red) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Node.js](https://img.shields.io/badge/node-v22.x-brightgreen) ![Yarn](https://img.shields.io/badge/yarn-3.6.1-blue) ![PostgreSQL](https://img.shields.io/badge/postgresql-14-blue) ![Redis](https://img.shields.io/badge/redis-7-red) ![Jest](https://img.shields.io/badge/tests-580%2B-green) ![Coverage](https://img.shields.io/badge/coverage-73%25%2B-yellowgreen) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 **Production-ready multi-carrier shipping rate comparison platform**
 
 Compare real-time shipping rates across FedEx, UPS, USPS, and DHL with encrypted credential storage and intelligent caching.
 
-[Features](#-features) • [Quick Start](#-quick-start) • [API Docs](#-api-endpoints) • [Architecture](#-architecture) • [Contributing](#-contributing)
+[Features](#features) | [Quick Start](#quick-start) | [API Docs](#api-endpoints) | [Architecture](#architecture) | [Packages](#workspace-packages) | [Deployment](#production-deployment) | [Contributing](#contributing)
 
 </div>
 
 ---
 
-## ✨ Features
+## Features
 
-- **🚚 Multi-Carrier Integration** - FedEx, UPS, USPS, and DHL support with parallel rate fetching
-- **🔐 Secure by Default** - AES-256-CBC encrypted credentials, JWT authentication, rate limiting
-- **⚡ High Performance** - Redis caching (5min TTL), async job processing with Bull queues
-- **📊 Rate Analytics** - Historical tracking and comparison analytics
-- **🔧 Developer Friendly** - 5-layer architecture, comprehensive error handling, detailed logging
+- **Multi-Carrier Integration** - FedEx, UPS, USPS, and DHL support with parallel rate fetching
+- **Secure by Default** - AES-256-CBC encrypted credentials, JWT authentication, rate limiting
+- **High Performance** - Redis caching (5min TTL), async job processing with Bull queues
+- **Rate Analytics** - Historical tracking, comparison analytics, cheapest/fastest recommendations
+- **Developer Friendly** - 5-layer architecture, 7 shared packages, comprehensive error handling
+- **Production Ready** - Docker + Nginx + PM2, GitHub Actions CI/CD, Terraform IaC
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -40,7 +41,7 @@ git clone <repository-url>
 cd shipsmart-ai-api
 yarn install
 
-# Start services
+# Start services (PostgreSQL, Redis, S3Mock)
 yarn docker:up
 
 # Run migrations
@@ -63,11 +64,11 @@ curl http://localhost:3001/health
 # Expected: {"status": "OK"}
 ```
 
-**Bull Arena UI**: http://localhost:3050 (job monitoring - run `yarn arena:dev` to start)
+**Bull Arena UI**: http://localhost:3050 (job monitoring)
 
 ---
 
-## 📚 Technology Stack
+## Technology Stack
 
 | Category | Technologies |
 |----------|-------------|
@@ -77,122 +78,207 @@ curl http://localhost:3001/health
 | **Security** | JWT, Passport.js, bcrypt, AES-256-CBC, Helmet |
 | **Validation** | Joi, express-rate-limit |
 | **Observability** | Winston (structured JSON), Sentry |
-| **Testing** | Jest, Supertest (580 tests, 73%+ coverage) |
-| **DevOps** | Docker, Nginx, PM2, Terraform, GitHub Actions |
+| **Testing** | Jest 29.7, Supertest (580+ tests, 73%+ coverage) |
+| **DevOps** | Docker, Nginx, PM2, GitHub Actions, Terraform |
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 shipsmart-ai-api/
-├── config/                    # Environment configs (dev, staging, prod)
-├── packages/                  # Shared workspace packages
-│   ├── constants, env, errors, logger, redis, s3
-├── service/                   # Main API application
-│   ├── controller/           # HTTP handlers
-│   ├── services/             # Business logic
-│   ├── repositories/         # Data access
-│   ├── models/               # Database models
-│   ├── routes/               # API routes
-│   ├── middleware/           # Express middleware
-│   ├── workers/              # Background jobs
-│   └── database/migrations/  # DB migrations
-└── docker-compose.yml         # Local dev services
+├── config/                     # Environment configs (dev, staging, prod, test)
+├── packages/                   # Shared workspace packages
+│   ├── constants/             # Shared constants, enums, limits
+│   ├── env/                   # Configuration management (nconf)
+│   ├── errors/                # Custom error classes
+│   ├── http/                  # Response formatting utilities
+│   ├── logger/                # Winston structured logging
+│   ├── redis/                 # Redis client & caching
+│   └── s3/                    # AWS S3 wrapper
+├── service/                    # Main API application
+│   ├── controller/            # HTTP handlers (8 controllers)
+│   ├── services/              # Business logic (12+ services)
+│   │   └── carriers/          # Carrier-specific services
+│   ├── repositories/          # Data access layer (13 repositories)
+│   ├── models/                # Sequelize models (13 models)
+│   ├── routes/                # API route definitions
+│   ├── middleware/            # Express middleware (auth, validation, rate limiting)
+│   ├── validators/            # Joi validation schemas
+│   ├── presenters/            # Response formatters
+│   ├── helpers/               # Utility functions
+│   ├── lib/                   # Carrier proxies & request builders
+│   ├── workers/               # Bull queue consumers & producers
+│   ├── database/              # Migrations & seeders
+│   └── __tests__/             # Jest test suite
+├── nginx/                      # Nginx configs (dev, staging, prod)
+├── terraform/                  # Infrastructure as Code (AWS)
+├── .github/workflows/          # GitHub Actions CI/CD (4 workflows)
+├── scripts/                    # Deployment & utility scripts
+├── Dockerfile                  # Production container (Alpine + Nginx + PM2)
+├── docker-compose.yml          # Local dev services
+├── Makefile                    # Build automation
+└── pm2.sh                      # PM2 startup script
 ```
 
-**Architecture**: 5-layer pattern (Routes → Controllers → Services → Repositories → Models)
+**Architecture**: 5-layer pattern (Routes > Controllers > Services > Repositories > Models)
 
 Full architecture details: [.claude/CLAUDE.md](.claude/CLAUDE.md)
 
 ---
 
-## 🔌 API Endpoints
+## Workspace Packages
+
+The project uses Yarn Workspaces with 7 shared packages under `packages/`:
+
+| Package | Description |
+|---------|-------------|
+| **@shipsmart/constants** | Single source of truth for all constants: HTTP status codes, carrier identifiers, timeouts, pagination, validation limits, status enums, error codes |
+| **@shipsmart/env** | Configuration management via nconf - loads environment-specific JSON configs |
+| **@shipsmart/errors** | Custom error classes (ValidationError, AuthenticationError, NotFoundError, etc.) with HTTP status codes |
+| **@shipsmart/http** | HTTP utilities including ResponseFormatter for standardized API responses |
+| **@shipsmart/logger** | Winston-based structured JSON logging with request context and file rotation |
+| **@shipsmart/redis** | Redis client wrapper, caching utilities, key management, and cache decorators |
+| **@shipsmart/s3** | AWS S3 wrapper for file storage with signed URLs and key generation |
+
+See individual package READMEs for detailed API documentation.
+
+---
+
+## API Endpoints
 
 **Base URL**: `http://localhost:3001`
 
+**Authentication**: Include JWT in header: `Authorization: Bearer <token>`
+
 ### Authentication
 ```http
-POST   /auth/register         # Register new user
-POST   /auth/login           # Login (get JWT token)
-POST   /auth/logout          # Logout (requires auth)
-POST   /auth/forgot-password # Request password reset
-GET    /auth/verify-email/:token
+POST   /auth/register              # Register new user
+POST   /auth/login                 # Login (returns JWT access_token)
+POST   /auth/logout                # Logout (revoke session)
+POST   /auth/forgot-password       # Request password reset email
+POST   /auth/reset-password        # Reset password with token
+GET    /auth/verify-email/:token   # Verify email address
 ```
 
 ### Rate Shopping
 ```http
-POST   /shipments/rates              # Async rate fetch (returns job ID)
-POST   /shipments/rates/compare      # Sync rate comparison
-GET    /shipments/rates/job/:jobId   # Check job status
-GET    /shipments/rates/history      # Rate history
+POST   /shipments/rates            # Fetch rates (sync or async via ?async=true)
+POST   /shipments/rates/compare    # Compare rates (force refresh, sync)
+GET    /shipments/rates/job/:jobId # Check async job status/results
+GET    /shipments/rates/history    # Rate history by route
+```
+
+### Carriers
+```http
+GET    /carriers                   # List all carriers (paginated)
+GET    /carriers/:id               # Get carrier details
+GET    /carriers/:id/services      # Get carrier's shipping services
 ```
 
 ### Carrier Credentials
 ```http
-GET    /carrier-credentials          # List credentials
-POST   /carrier-credentials          # Add new credential
-PUT    /carrier-credentials/:id      # Update credential
-DELETE /carrier-credentials/:id      # Delete credential
-POST   /carrier-credentials/:id/validate
+GET    /carrier-credentials        # List user's credentials
+GET    /carrier-credentials/:id    # Get single credential
+POST   /carrier-credentials        # Add carrier credential (encrypted)
+PUT    /carrier-credentials/:id    # Update credential
+DELETE /carrier-credentials/:id    # Delete credential
+POST   /carrier-credentials/:id/validate  # Validate against carrier API
 ```
 
-### Other Endpoints
+### Users
 ```http
-GET    /users/profile        # User management
-GET    /addresses            # Address management
-GET    /carriers             # Carrier info
-GET    /health              # Health check
+GET    /users/profile              # Get authenticated user profile
+PUT    /users/profile              # Update profile
+POST   /users/change-password      # Change password
+DELETE /users/account              # Delete account
 ```
 
-**Authentication**: Include JWT in header: `Authorization: Bearer <token>`
+### Addresses
+```http
+GET    /addresses                  # List saved addresses
+GET    /addresses/:id              # Get single address
+POST   /addresses                  # Create address
+PUT    /addresses/:id              # Update address
+DELETE /addresses/:id              # Delete address
+PATCH  /addresses/:id/set-default  # Set as default address
+```
 
-**Rate Limiting**: Login (5/15min), Register (3/15min)
+### Logs
+```http
+GET    /logs/my-logs               # User's API request logs
+GET    /logs/shipment/:shipmentId  # Logs for a specific shipment
+GET    /logs/errors                # Error logs
+GET    /logs/carrier-stats/:carrier # Carrier API statistics
+GET    /logs/search                # Search logs
+```
+
+### Health Check
+```http
+GET    /health                     # System health (no auth required)
+```
+
+**Rate Limiting**: Login (5/15min), Register (3/15min), Async jobs (20/15min per user)
 
 ---
 
-## 🛠️ Available Commands
+## Available Commands
 
 ### Development
 ```bash
-yarn dev              # Start API server with hot-reload
+yarn dev              # Start API server with hot-reload (port 3001)
 yarn worker:dev       # Start background worker
-yarn arena:dev        # Start Bull Arena UI (job monitoring)
-yarn lint             # Check code style
+yarn arena:dev        # Start Bull Arena UI (port 3050)
+yarn lint             # Check code style (ESLint)
+yarn lint --fix       # Auto-fix lint issues
+```
+
+### Testing
+```bash
+cd service
+yarn test             # Run all tests
+yarn test:coverage    # Run with coverage report
+yarn test:unit        # Unit tests only
+yarn test:integration # Integration tests only
+yarn test:security    # Security tests only
+yarn test:watch       # Watch mode
 ```
 
 ### Database
 ```bash
 cd service
-yarn db:migrate          # Run migrations
-yarn db:migrate:status   # Check status
+yarn db:migrate          # Run pending migrations
+yarn db:migrate:status   # Check migration status
+yarn db:migrate:undo     # Rollback last migration
 yarn db:seed             # Seed database
+yarn db:seed:undo        # Undo seeds
 ```
 
 ### Docker
 ```bash
 yarn docker:up        # Start PostgreSQL, Redis, S3Mock
 yarn docker:down      # Stop services
-yarn docker:logs      # View logs
-yarn docker:clean     # Clean volumes
+yarn docker:logs      # View container logs
+yarn docker:restart   # Restart services
+yarn docker:clean     # Remove containers and volumes
 ```
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### 5-Layer Pattern
 
 ```
-Request → Routes → Controllers → Services → Repositories → Models → Database
+Request > Routes > Controllers > Services > Repositories > Models > Database
 ```
 
 **Key Principles**:
-- **Routes**: Endpoints + middleware
-- **Controllers**: HTTP handling + response formatting
-- **Services**: ALL business logic
-- **Repositories**: Database queries only (always filter by `user_id`)
-- **Models**: Sequelize schemas
+- **Routes**: Endpoint definitions + middleware (auth, validation, rate limiting)
+- **Controllers**: HTTP handling + response formatting (max 50 lines/method)
+- **Services**: ALL business logic, orchestration, caching
+- **Repositories**: Database queries only (always filter by `user_id` for multi-tenancy)
+- **Models**: Sequelize schema definitions
 
 **Context Pattern**: Pass `{ currentUser, requestId }` through all layers
 
@@ -200,27 +286,27 @@ Full details: [.claude/CLAUDE.md](.claude/CLAUDE.md)
 
 ---
 
-## 🔒 Security
+## Security
 
 | Feature | Implementation |
 |---------|---------------|
-| **Authentication** | JWT with 30-day expiration, session tracking |
+| **Authentication** | JWT with 30-day expiration, session tracking via JTI |
 | **Credential Storage** | AES-256-CBC encryption for carrier API keys |
 | **Password Policy** | 12+ chars, uppercase, lowercase, digit, special char |
 | **Session Security** | All sessions revoked on password reset |
-| **Rate Limiting** | 5 login/15min, 3 register/15min |
-| **Multi-Tenancy** | All queries filter by `user_id` |
-| **CORS** | Origin whitelist per environment |
-| **Headers** | Helmet middleware (CSP, HSTS, X-Frame-Options) |
+| **Rate Limiting** | 5 login/15min, 3 register/15min, Nginx layer rate limiting |
+| **Multi-Tenancy** | All repository queries filter by `user_id` |
+| **CORS** | Environment-based origin whitelist (strict in production) |
+| **Headers** | Helmet middleware (CSP, HSTS, X-Frame-Options, referrer policy) |
 | **Error Tracking** | Sentry integration (sensitive data filtered) |
-
-**Password Requirements**: Minimum 12 characters with uppercase, lowercase, digit, and special character (@$!%*?&)
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-Configuration files: [config/](config/) directory
+### Config Files
+
+Environment-specific configs in the [config/](config/) directory:
 
 ```json
 {
@@ -239,241 +325,151 @@ Configuration files: [config/](config/) directory
 
 Set environment: `NODE_ENV=development|test|staging|production`
 
+### Environment Variables
+
+For production, override config values with environment variables:
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NODE_ENV` | Environment (development, test, staging, production) | Yes |
+| `JWT_SECRET` | JWT signing secret (32+ characters) | Production |
+| `ENCRYPTION_KEY` | AES-256-CBC key (exactly 32 characters) | Production |
+| `DATABASE_URL` | PostgreSQL connection string | Production |
+| `REDIS_URL` | Redis connection string | Production |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins | Production |
+| `SENTRY_DSN` | Sentry error tracking DSN | Optional |
+| `AWS_ACCESS_KEY_ID` | AWS credentials for S3 | If using S3 |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | If using S3 |
+
 ---
 
-## 📦 Background Jobs
+## Background Jobs
 
 **Bull Queue System** (backed by Redis)
 
-- **Async rate fetching** for long-running operations
+- **Async rate fetching** - Long-running carrier API calls processed in background
+- **API logging** - Request/response logging queued for async persistence
+- **Carrier API logging** - Carrier API call logging queued for async persistence
 - **Job monitoring** via Bull Arena UI (http://localhost:3050)
-- **Automatic retry** for failed carrier API calls
+- **Graceful shutdown** with configurable timeouts (8s prod, 3s dev)
 
-**Queue**: `shipsmart-worker`
+**Queue**: `shipsmart-worker` with concurrency limits (5 rate fetches, 3 log jobs)
 
 ---
 
-## 🧪 Testing
+## Testing
 
-**Framework**: Jest + Supertest
+**Framework**: Jest 29.7 + Supertest
 
 ```bash
-# Run all tests
-cd service && yarn test
-
-# Run with coverage
-yarn test:coverage
-
-# Run specific test types
-yarn test:unit          # Unit tests only
-yarn test:integration   # Integration tests only
-yarn test:security      # Security tests only
+cd service && yarn test           # Run all tests
+cd service && yarn test:coverage  # With coverage report
 ```
 
-**Coverage**: 73%+ across 580 tests in 37 test suites
+**Coverage**: 73%+ across 580+ tests in 37 test suites
 
-| Category | Coverage |
-|----------|----------|
-| Unit Tests | Controllers, Services, Helpers, Presenters |
-| Integration Tests | API endpoints, Database operations |
-| Security Tests | Auth middleware, Multi-tenancy |
+| Category | What's Tested |
+|----------|--------------|
+| **Unit Tests** | Controllers, Services, Helpers, Presenters, Middleware |
+| **Integration** | API endpoints, Database operations (scaffolded) |
+| **Security** | Auth middleware, Multi-tenancy enforcement (scaffolded) |
+
+Test configuration: [service/jest.config.js](service/jest.config.js)
 
 See testing guidelines in [.claude/CLAUDE.md](.claude/CLAUDE.md)
 
 ---
 
-## 🚢 Production Deployment
+## Production Deployment
 
 ### Architecture Overview
 
-The application uses a **single-container production architecture** with:
-- **Nginx** - Reverse proxy, rate limiting, SSL termination
+The application uses a **single-container production architecture**:
+- **Nginx** - Reverse proxy, rate limiting, SSL termination, security headers
 - **Node.js 22** - Runtime environment
-- **PM2** - Process management for API, worker, and arena processes
-
-This architecture mirrors the production deployment pattern used in enterprise systems.
+- **PM2** - Process management for API server, worker, and arena
 
 ### Docker Production Setup
 
-#### Dockerfile Features
-
-The production [Dockerfile](Dockerfile) includes:
-
-1. **Base Image:** `nginx:alpine` with Node.js 22 installed
-2. **Package Manager:** Yarn 3.6.1 via Corepack (matches package.json specification)
-3. **Native Module Handling:** Automatic rebuild of bcrypt and msgpackr-extract for correct architecture
-4. **Database Migrations:** Runs automatically during build
-5. **Environment-based Config:** Nginx configuration per environment (development, staging, production)
-6. **PM2 Process Manager:** Manages all Node.js processes inside the container
-
-#### Building Production Image
+The production [Dockerfile](Dockerfile) features:
+1. **Base Image:** `nginx:alpine` with Node.js 22
+2. **Package Manager:** Yarn 3.6.1 via Corepack
+3. **Native Modules:** Automatic rebuild of bcrypt and msgpackr-extract
+4. **Database Migrations:** Run automatically during build
+5. **Environment Config:** Nginx config selected per `NODE_ENV`
+6. **PM2 Processes:** API server (port 3001), worker, arena (port 3050)
 
 ```bash
 # Build production image
-docker build -t shipsmart-api:latest .
-
-# Build with specific environment
 docker build --build-arg NODE_ENV=production -t shipsmart-api:production .
 
-# Run production container locally
-docker run -p 80:80 -p 3000:3000 -p 3050:3050 \
+# Run with external services
+docker run -p 80:80 -p 3050:3050 \
   -e DATABASE_URL=postgresql://user:pass@host:5432/db \
   -e REDIS_URL=redis://host:6379 \
-  shipsmart-api:latest
+  -e JWT_SECRET=your-secret \
+  -e ENCRYPTION_KEY=your-32-char-key \
+  shipsmart-api:production
+
+# Verify
+curl http://localhost/api/health
 ```
-
-### Process Management with PM2
-
-The [pm2.sh](pm2.sh) script manages all services inside the Docker container:
-
-**Processes Started:**
-- `server` - Express API server (port 3001, proxied via Nginx on port 80)
-- `worker` - Background job processor (Bull queues)
-- `arena` - Bull Arena UI for job monitoring (port 3050)
-
-**Features:**
-- Auto-restart on failure
-- Graceful shutdown handling
-- Log rotation and management
-- Process monitoring
 
 ### Nginx Reverse Proxy
 
-Environment-specific Nginx configurations:
-- [nginx/nginx.development.conf](nginx/nginx.development.conf) - Permissive rate limits
-- [nginx/nginx.staging.conf](nginx/nginx.staging.conf) - Moderate restrictions
-- [nginx/nginx.production.conf](nginx/nginx.production.conf) - Strict security
+Environment-specific configurations in [nginx/](nginx/):
+- [nginx.development.conf](nginx/nginx.development.conf) - Permissive rate limits
+- [nginx.staging.conf](nginx/nginx.staging.conf) - Moderate restrictions
+- [nginx.production.conf](nginx/nginx.production.conf) - Strict security headers, SSL/TLS
 
-**Production Features:**
-- Rate limiting: 10 req/s for API, 5 req/min for auth endpoints
-- Security headers (X-Frame-Options, CSP, X-Content-Type-Options)
-- Gzip compression
-- Connection limits (10 concurrent per IP)
-- Health check endpoint (no rate limit): `/api/health`
-- SSL/TLS termination (when certificates configured)
+**Production features**: 10 req/s API limit, 5 req/min auth limit, gzip, connection limits, security headers (CSP, HSTS, X-Frame-Options)
 
-### Production Deployment Checklist
+### CI/CD Pipeline (GitHub Actions)
 
-#### Pre-Deployment Security
-- [ ] Update `jwt.secret` (32+ characters, use secure random generator)
-- [ ] Update `encryption.key` (exactly 32 characters, use secure random generator)
-- [ ] Restrict CORS origins (remove `*`, whitelist production domains)
-- [ ] Enable Helmet middleware for security headers
-- [ ] Review Nginx security headers configuration
-- [ ] Verify carrier credential encryption is working
-- [ ] Audit logging to prevent sensitive data exposure
+Four automated workflows in [.github/workflows/](.github/workflows/):
 
-#### Infrastructure
-- [ ] Provision database (RDS PostgreSQL recommended)
-- [ ] Provision Redis cache (ElastiCache recommended)
-- [ ] Set up Docker container registry (ECR recommended)
-- [ ] Configure load balancer with health checks
-- [ ] Set up SSL/TLS certificates (ACM or Let's Encrypt)
-- [ ] Configure DNS records
-- [ ] Set up VPC and security groups
+| Workflow | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| **CI** | `ci.yml` | Push/PR to main, develop, feature/* | Build, lint, test, push Docker image to ECR |
+| **CD** | `cd.yml` | Manual or called by other workflows | Deploy ECR image to ECS (rolling update) |
+| **CI/CD** | `ci-cd.yml` | Push to main or develop | Auto build + deploy (production requires approval) |
+| **Manual Deploy** | `manual-deploy.yml` | Manual dispatch | Deploy specific version/tag, rollbacks, hotfixes |
 
-#### Configuration
+**Branch strategy**:
+- `main` -> production (requires approval)
+- `develop` -> staging (auto-deploy)
+- `feature/*` -> development (build only)
+
+**AWS Resources**: ECR repository, ECS clusters, S3 config bucket, IAM roles
+
+See [.github/workflows/README.md](.github/workflows/README.md) for detailed workflow documentation.
+
+### Production Checklist
+
+**Security:**
+- [ ] Set `JWT_SECRET` (32+ characters, secure random)
+- [ ] Set `ENCRYPTION_KEY` (exactly 32 characters, secure random)
+- [ ] Configure `ALLOWED_ORIGINS` (no wildcards)
 - [ ] Update carrier API URLs to production endpoints
-- [ ] Configure production database connection
-- [ ] Configure production Redis connection
-- [ ] Set up environment variables securely (AWS Secrets Manager)
-- [ ] Enable HTTPS redirect (uncomment in nginx.production.conf)
-- [ ] Set up S3 buckets for config storage
+- [ ] Audit logging configuration
 
-#### Operations
-- [ ] Run database migrations: `yarn db:migrate`
-- [ ] Set up monitoring (CloudWatch, Datadog, New Relic)
-- [ ] Configure log aggregation (CloudWatch Logs)
-- [ ] Set up error tracking (Sentry)
-- [ ] Configure backup strategy for database
-- [ ] Document rollback procedure
-- [ ] Set up deployment pipeline (Jenkins, GitHub Actions)
-- [ ] Test health check endpoint: `curl http://your-domain/api/health`
+**Infrastructure:**
+- [ ] Provision PostgreSQL (RDS recommended)
+- [ ] Provision Redis (ElastiCache recommended)
+- [ ] Set up ECR repository
+- [ ] Configure ECS cluster and service
+- [ ] Provision SSL/TLS certificates
+- [ ] Set up CloudWatch logging and monitoring
 
-### CI/CD Pipeline (Jenkins)
-
-The project uses **separate Jenkins jobs** for CI (build) and CD (deploy):
-
-#### **Job 1: CI Pipeline** (`jenkinsFile`)
-Builds and pushes Docker images to AWS ECR:
-```
-1. Checkout from GitHub
-2. Install Node.js 22 + Yarn
-3. Pull configs from S3
-4. Install dependencies (make dev-clean-install)
-5. Lint & test
-6. Build Docker image
-7. Push to ECR
-```
-
-**Job Name:** `shipsmart-api-ci`
-**Trigger:** GitHub webhook on push
-
-#### **Job 2: CD Pipeline** (`jenkinsFile.deploy`)
-Deploys ECR images to AWS ECS:
-```
-1. Verify image exists in ECR
-2. Pre-deployment checks
-3. Run deploy script:
-   - Update ECS task definition
-   - Trigger rolling deployment
-4. Verify deployment success
-```
-
-**Job Name:** `shipsmart-api-deploy`
-**Trigger:** Manual or automatic from CI job
-
-**Deployment Script:** `scripts/deploy.sh <environment> <image_tag>`
-
-**AWS Resources Required:**
-- ECR Repository: `shipsmart-api`
-- S3 Bucket: `s3://shipsmart-config`
-- ECS Clusters: `shipsmart-{env}-cluster`
-- ECS Services: `shipsmart-{env}-service`
-- IAM Role: Jenkins with ECR push, S3 read, ECS update permissions
-
-**Manual Deployment:**
-```bash
-bash scripts/deploy.sh production main
-```
-
-### Local Production Testing
-
-Before deploying to AWS, validate the production Docker setup locally:
-
-```bash
-# Automated testing (recommended)
-chmod +x scripts/test-production-local.sh
-./scripts/test-production-local.sh
-
-# Manual testing
-docker-compose -f docker-compose.production-test.yml build
-docker-compose -f docker-compose.production-test.yml up -d
-
-# Verify health
-curl http://localhost/api/health
-
-# Check PM2 status
-docker exec shipsmart-api-prod-test pm2 status
-
-# Cleanup
-docker-compose -f docker-compose.production-test.yml down
-```
-
-**What Gets Tested:**
-- ✅ Production Dockerfile build with Nginx + Node 22 + PM2
-- ✅ PM2 process management (server, worker, arena)
-- ✅ Nginx reverse proxy and rate limiting
-- ✅ PostgreSQL and Redis connectivity
-- ✅ Security headers configuration
-- ✅ Health check endpoint
-- ✅ Graceful restart behavior
-
-See [Production Testing Guide](docs/PRODUCTION-TESTING.md) for complete testing documentation.
+**Verification:**
+- [ ] Health check responds: `curl http://your-domain/api/health`
+- [ ] PM2 processes running: `docker exec <id> pm2 status`
+- [ ] Database migrations applied
+- [ ] Rate limiting active
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 **Docker services won't start**
 ```bash
@@ -489,24 +485,31 @@ docker logs shipsmart-postgres
 **Port conflicts**
 ```bash
 lsof -i :3001  # Find process using port
-kill -9 <PID>  # Kill process
+kill -9 <PID>
 ```
 
 **Worker not processing jobs**
 - Check Bull Arena: http://localhost:3050
-- Verify Redis connection
+- Verify Redis connection: `yarn docker:logs`
 - Restart worker: `yarn worker:dev`
+
+**bcrypt module error in Docker** (`ERR_DLOPEN_FAILED`)
+```bash
+# Rebuild native modules for correct architecture
+docker exec <id> yarn rebuild bcrypt msgpackr-extract
+```
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 This is a personal side project, but contributions are welcome! Please:
 
-1. **Read**: [Development Standards](.claude/CLAUDE.md)
+1. **Read**: [Development Standards](.claude/CLAUDE.md) (comprehensive guide)
 2. **Follow**: 5-layer architecture + naming conventions
-3. **Lint**: `yarn lint` before commit
-4. **Commit**: Use semantic messages (`feat:`, `fix:`, `docs:`)
+3. **Test**: `cd service && yarn test` before committing
+4. **Lint**: `yarn lint` before committing
+5. **Commit**: Use semantic messages (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `security:`)
 
 ### Code Style
 
@@ -521,7 +524,7 @@ class RateController {}
 const shipmentData = {}
 
 // Constants: SCREAMING_SNAKE_CASE
-const HTTP_STATUS = {}
+const { HTTP_STATUS } = require('@shipsmart/constants');
 
 // Private methods: _prefix
 _privateMethod() {}
@@ -531,12 +534,13 @@ _privateMethod() {}
 
 ---
 
-## 📖 Documentation
+## Documentation
 
-- **[Development Standards](.claude/CLAUDE.md)** - Comprehensive guide
-- **[Node.js Docs](https://nodejs.org/docs/)**
-- **[Sequelize Docs](https://sequelize.org/docs/v6/)**
-- **[Bull Queue Guide](https://github.com/OptimalBits/bull)**
+- **[Development Handbook](docs/DEVELOPMENT-HANDBOOK.md)** - Comprehensive architecture & coding guide
+- **[CI/CD Workflows](.github/workflows/README.md)** - GitHub Actions documentation
+- **[Constants Package](packages/constants/README.md)** - Shared constants reference
+- **[Terraform Infrastructure](terraform/README.md)** - AWS infrastructure documentation
+- **[Postman Collection](postman/README.md)** - API testing collection
 
 ### Carrier API Docs
 - [FedEx Developer Portal](https://developer.fedex.com/)
@@ -546,7 +550,7 @@ _privateMethod() {}
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
