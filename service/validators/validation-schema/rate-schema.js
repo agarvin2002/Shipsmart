@@ -1,4 +1,5 @@
 const Joi = require('@hapi/joi');
+const { VALIDATION_LIMITS } = require('@shipsmart/constants');
 
 const addressSchema = Joi.object({
   postal_code: Joi.string().required(),
@@ -12,16 +13,16 @@ const addressSchema = Joi.object({
 });
 
 const packageSchema = Joi.object({
-  weight: Joi.number().positive().max(150).required(),
-  length: Joi.number().positive().max(108).optional(),
-  width: Joi.number().positive().max(108).optional(),
-  height: Joi.number().positive().max(108).optional(),
+  weight: Joi.number().positive().max(VALIDATION_LIMITS.MAX_WEIGHT_LB).required(),
+  length: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).optional(),
+  width: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).optional(),
+  height: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).optional(),
   weight_unit: Joi.string().valid('lb', 'kg', 'lbs').default('lb'),
   dimension_unit: Joi.string().valid('in', 'cm').default('in'),
   dimensions: Joi.object({
-    length: Joi.number().positive().max(108).required(),
-    width: Joi.number().positive().max(108).required(),
-    height: Joi.number().positive().max(108).required(),
+    length: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).required(),
+    width: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).required(),
+    height: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).required(),
   }).optional(),
   value: Joi.number().positive().optional(),
   declared_value: Joi.number().positive().optional(),
@@ -46,7 +47,7 @@ const getRatesSchema = Joi.object({
   destination: addressSchema.optional(),
   // Support both single package and multiple packages
   package: packageSchema.optional(),
-  packages: Joi.array().items(packageSchema).min(1).max(10).optional(),
+  packages: Joi.array().items(packageSchema).min(1).max(VALIDATION_LIMITS.MAX_PACKAGES_PER_SHIPMENT).optional(),
   service_type: Joi.string().valid('ground', 'express', 'overnight', 'international').optional(),
   customs: customsSchema.optional(),
 }).or('origin_address_id', 'origin').or('destination_address_id', 'destination').or('package', 'packages');

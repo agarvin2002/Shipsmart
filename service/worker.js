@@ -1,12 +1,12 @@
 global.logger = require('@shipsmart/logger').application('worker');
 
 const workerClient = require('./worker-client');
-const { WorkerJobs } = require('@shipsmart/constants');
+const { WorkerJobs, TIMEOUTS } = require('@shipsmart/constants');
 const RateFetchConsumer = require('./workers/consumers/rate-fetch-consumer');
 const ApiLogConsumer = require('./workers/consumers/api-log-consumer');
 const CarrierApiLogConsumer = require('./workers/consumers/carrier-api-log-consumer');
 
-const SHUTDOWN_TIMEOUT = 30000;
+const SHUTDOWN_TIMEOUT = TIMEOUTS.WORKER_SHUTDOWN;
 let isShuttingDown = false;
 
 const start = async () => {

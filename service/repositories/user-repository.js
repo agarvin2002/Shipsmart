@@ -1,4 +1,5 @@
 const { User } = require('../models');
+const { USER_STATUS } = require('@shipsmart/constants');
 
 class UserRepository {
   async findById(id) {
@@ -50,7 +51,7 @@ class UserRepository {
   async softDelete(id) {
     const user = await User.findByPk(id);
     if (!user) return null;
-    return await user.update({ status: 'inactive' });
+    return await user.update({ status: USER_STATUS.INACTIVE });
   }
 
   async setEmailVerified(id) {

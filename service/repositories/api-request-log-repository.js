@@ -13,6 +13,7 @@
 
 const { ApiRequestLog } = require('../models');
 const { Op } = require('sequelize');
+const { PAGINATION } = require('@shipsmart/constants');
 
 class ApiRequestLogRepository {
   /**
@@ -76,7 +77,7 @@ class ApiRequestLogRepository {
    * @returns {Promise<ApiRequestLog[]>} Array of logs
    */
   async findByUser(userId, options = {}) {
-    const { limit = 50, offset = 0, startDate, endDate } = options;
+    const { limit = PAGINATION.LOG_ENTRIES_LIMIT, offset = PAGINATION.DEFAULT_OFFSET, startDate, endDate } = options;
     const where = { user_id: userId };
 
     if (startDate || endDate) {
@@ -100,7 +101,7 @@ class ApiRequestLogRepository {
    * @returns {Promise<ApiRequestLog[]>} Array of error logs
    */
   async findErrors(options = {}) {
-    const { limit = 50, userId, startDate } = options;
+    const { limit = PAGINATION.LOG_ENTRIES_LIMIT, userId, startDate } = options;
     const where = { error_message: { [Op.ne]: null } };
 
     if (userId) where.user_id = userId;
@@ -153,7 +154,7 @@ class ApiRequestLogRepository {
    * @param {number} limit - Number of results to return
    * @returns {Promise<ApiRequestLog[]>} Array of logs sorted by query_count
    */
-  async getMostQueried(userId, limit = 10) {
+  async getMostQueried(userId, limit = PAGINATION.TOP_QUERIES_LIMIT) {
     return await ApiRequestLog.findAll({
       where: { user_id: userId },  // CRITICAL: Multi-tenancy filter
       limit,

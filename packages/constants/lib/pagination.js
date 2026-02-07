@@ -1,0 +1,14 @@
+const PAGINATION = {
+  DEFAULT_LIMIT: 50,
+  DEFAULT_OFFSET: 0,
+  MAX_LIMIT: 500,
+
+  // Specific use cases
+  RATE_HISTORY_LIMIT: 100,
+  LOG_ENTRIES_LIMIT: 50,
+  TOP_QUERIES_LIMIT: 10,
+};
+
+module.exports = {
+  PAGINATION,
+};

@@ -3,6 +3,7 @@ const { CarrierCredential, Carrier, CarrierService } = require('../models');
 const FedexRateService = require('../services/carriers/fedex-rate-service');
 const UpsRateService = require('../services/carriers/ups-rate-service');
 const UspsRateService = require('../services/carriers/usps-rate-service');
+const { CARRIERS, CREDENTIAL_STATUS } = require('@shipsmart/constants');
 
 class CarrierRouter {
   
@@ -14,7 +15,7 @@ class CarrierRouter {
         where: {
           user_id: userId,
           is_active: true,
-          validation_status: 'valid',
+          validation_status: CREDENTIAL_STATUS.VALID,
         },
         order: [['carrier', 'ASC']],
       });
@@ -101,12 +102,12 @@ class CarrierRouter {
     const isInternational = origin?.country !== destination?.country;
 
     // Domestic carriers (simplified logic)
-    if (carrier === 'usps' && !isInternational) {
+    if (carrier === CARRIERS.USPS && !isInternational) {
       return true;
     }
 
     // International carriers
-    if ((carrier === 'fedex' || carrier === 'ups' || carrier === 'dhl') && isInternational) {
+    if ((carrier === CARRIERS.FEDEX || carrier === CARRIERS.UPS || carrier === CARRIERS.DHL) && isInternational) {
       return true;
     }
 
@@ -121,10 +122,10 @@ class CarrierRouter {
   
   static getCarrierService(carrierName, credentials) {
     const serviceMap = {
-      fedex: FedexRateService,
-      ups: UpsRateService,
-      usps: UspsRateService,
-      // dhl: DhlRateService, // Future implementation
+      [CARRIERS.FEDEX]: FedexRateService,
+      [CARRIERS.UPS]: UpsRateService,
+      [CARRIERS.USPS]: UspsRateService,
+      // [CARRIERS.DHL]: DhlRateService, // Future implementation
     };
 
     const ServiceClass = serviceMap[carrierName.toLowerCase()];

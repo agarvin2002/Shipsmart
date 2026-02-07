@@ -1,0 +1,36 @@
+const WEIGHT_UNITS = {
+  POUNDS: 'lb',
+  KILOGRAMS: 'kg',
+  OUNCES: 'oz',
+};
+
+const DIMENSION_UNITS = {
+  INCHES: 'in',
+  CENTIMETERS: 'cm',
+};
+
+const TEMPERATURE_UNITS = {
+  FAHRENHEIT: 'F',
+  CELSIUS: 'C',
+};
+
+// Conversion factors
+const CONVERSIONS = {
+  LB_TO_KG: 0.453592,
+  KG_TO_LB: 2.20462,
+  IN_TO_CM: 2.54,
+  CM_TO_IN: 0.393701,
+};
+
+const UNIT_DEFAULTS = {
+  WEIGHT: WEIGHT_UNITS.POUNDS,
+  DIMENSION: DIMENSION_UNITS.INCHES,
+};
+
+module.exports = {
+  WEIGHT_UNITS,
+  DIMENSION_UNITS,
+  TEMPERATURE_UNITS,
+  CONVERSIONS,
+  UNIT_DEFAULTS,
+};

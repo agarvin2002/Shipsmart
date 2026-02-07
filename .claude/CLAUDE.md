@@ -12,15 +12,16 @@
 2. [Architecture Patterns](#architecture-patterns)
 3. [Naming Conventions](#naming-conventions)
 4. [File Organization](#file-organization)
-5. [Security Standards](#security-standards)
-6. [Error Handling](#error-handling)
-7. [Logging Standards](#logging-standards)
-8. [Database Patterns](#database-patterns)
-9. [API Design](#api-design)
-10. [Testing Guidelines](#testing-guidelines)
-11. [Development Workflow](#development-workflow)
-12. [Critical Security Issues to Avoid](#critical-security-issues-to-avoid)
-13. [Production Deployment Architecture](#production-deployment-architecture)
+5. [Constants Usage](#constants-usage)
+6. [Security Standards](#security-standards)
+7. [Error Handling](#error-handling)
+8. [Logging Standards](#logging-standards)
+9. [Database Patterns](#database-patterns)
+10. [API Design](#api-design)
+11. [Testing Guidelines](#testing-guidelines)
+12. [Development Workflow](#development-workflow)
+13. [Critical Security Issues to Avoid](#critical-security-issues-to-avoid)
+14. [Production Deployment Architecture](#production-deployment-architecture)
 
 ---
 
@@ -435,6 +436,156 @@ service/
 │   └── seeders/
 └── errors/                    # Custom error classes
 ```
+
+---
+
+## Constants Usage
+
+### Using @shipsmart/constants Package
+
+**ALL configuration values, status enums, and magic numbers MUST use the centralized constants package.**
+
+The `@shipsmart/constants` package provides a single source of truth for all constants across the codebase. This eliminates hardcoded values and improves maintainability.
+
+### Import Pattern
+
+```javascript
+const { CARRIERS, TIMEOUTS, PAGINATION, USER_STATUS } = require('@shipsmart/constants');
+```
+
+### Available Constant Categories
+
+1. **HTTP_STATUS** - HTTP status codes (200, 404, 500, etc.)
+2. **CARRIERS, CARRIER_NAMES, CARRIER_API_URLS, CARRIER_DEFAULTS** - Carrier identifiers and configuration
+3. **TIMEOUTS, RATE_LIMIT_WINDOWS** - All timeout and duration values
+4. **RATE_LIMITS** - Rate limiting configuration
+5. **PAGINATION** - Pagination defaults and limits
+6. **USER_STATUS, CREDENTIAL_STATUS, JOB_STATUS** - Status enums
+7. **COUNTRIES, COUNTRY_DEFAULTS** - Country codes and defaults
+8. **WEIGHT_UNITS, DIMENSION_UNITS, CONVERSIONS, UNIT_DEFAULTS** - Units of measurement
+9. **SERVICE_TYPES, CARRIER_SERVICE_TYPES** - Shipping service types
+10. **CURRENCIES, CURRENCY_DEFAULTS** - Currency codes
+11. **DUTIES_PAYMENT, CONTENT_TYPES, INCOTERMS** - Customs constants
+12. **VALIDATION_LIMITS** - Validation thresholds
+13. **SECURITY** - Security-related constants
+14. **ERROR_CODES, ERROR_MESSAGES** - Error handling constants
+15. **QUEUE_NAMES, WorkerJobs** - Queue and worker job types
+
+### CRITICAL RULES
+
+#### ❌ NEVER DO THIS
+
+```javascript
+// ❌ WRONG - Hardcoded carrier names
+if (carrier === 'fedex') { }
+
+// ❌ WRONG - Magic numbers
+const timeout = 15000;
+const limit = 50;
+
+// ❌ WRONG - Hardcoded status strings
+if (user.status !== 'active') { }
+
+// ❌ WRONG - Hardcoded validation limits
+.min(12)
+.max(150)
+
+// ❌ WRONG - Mixed case for same value
+if (unit === 'lb' || unit === 'LB') { }
+```
+
+#### ✅ ALWAYS DO THIS
+
+```javascript
+// ✅ CORRECT - Use carrier constants
+const { CARRIERS } = require('@shipsmart/constants');
+if (carrier === CARRIERS.FEDEX) { }
+
+// ✅ CORRECT - Use named timeouts and pagination
+const { TIMEOUTS, PAGINATION } = require('@shipsmart/constants');
+const timeout = TIMEOUTS.CARRIER_API_DEFAULT;
+const limit = PAGINATION.DEFAULT_LIMIT;
+
+// ✅ CORRECT - Use status enums
+const { USER_STATUS } = require('@shipsmart/constants');
+if (user.status !== USER_STATUS.ACTIVE) { }
+
+// ✅ CORRECT - Use validation limits
+const { VALIDATION_LIMITS } = require('@shipsmart/constants');
+.min(VALIDATION_LIMITS.PASSWORD_MIN_LENGTH)
+.max(VALIDATION_LIMITS.MAX_WEIGHT_LB)
+
+// ✅ CORRECT - Use unit constants
+const { WEIGHT_UNITS } = require('@shipsmart/constants');
+if (unit === WEIGHT_UNITS.POUNDS) { }
+```
+
+### Usage by Layer
+
+#### Repositories
+
+```javascript
+const { PAGINATION } = require('@shipsmart/constants');
+
+async findByUserId(userId, options = {}) {
+  const { limit = PAGINATION.DEFAULT_LIMIT, offset = PAGINATION.DEFAULT_OFFSET } = options;
+  // ... query logic
+}
+```
+
+#### Services
+
+```javascript
+const { CARRIERS, TIMEOUTS, USER_STATUS } = require('@shipsmart/constants');
+
+if (carrier === CARRIERS.FEDEX) {
+  const result = await this.proxy.call({ timeout: TIMEOUTS.CARRIER_API_DEFAULT });
+}
+
+if (user.status !== USER_STATUS.ACTIVE) {
+  throw new AuthenticationError('Account inactive');
+}
+```
+
+#### Validators
+
+```javascript
+const { VALIDATION_LIMITS } = require('@shipsmart/constants');
+
+const packageSchema = Joi.object({
+  weight: Joi.number().positive().max(VALIDATION_LIMITS.MAX_WEIGHT_LB).required(),
+  length: Joi.number().positive().max(VALIDATION_LIMITS.MAX_DIMENSION_IN).optional(),
+});
+```
+
+#### Carrier Services
+
+```javascript
+const { CARRIERS, CARRIER_DEFAULTS } = require('@shipsmart/constants');
+
+class FedexRateService extends BaseCarrierRateService {
+  constructor() {
+    super(CARRIERS.FEDEX, CARRIER_DEFAULTS.TIMEOUT);
+  }
+}
+```
+
+### When Adding New Constants
+
+1. Add to existing domain file in `packages/constants/lib/` or create new one
+2. Export from `packages/constants/index.js`
+3. Update `packages/constants/README.md` with usage examples
+4. Use immediately in all relevant code (no hardcoded values)
+
+### Benefits
+
+- **Single source of truth**: Update in one place, applies everywhere
+- **Prevents typos**: 'fedx' vs 'fedex' bugs eliminated
+- **Easy to change**: Update timeout from 15s to 30s in one line
+- **Self-documenting**: Constants named for their purpose
+- **Type safety**: Autocomplete and IntelliSense support
+
+**See:** `packages/constants/README.md` for complete documentation
 
 ---
 

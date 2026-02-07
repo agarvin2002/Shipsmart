@@ -2,13 +2,14 @@
 const BaseCarrierRateService = require('./base-carrier-rate-service');
 const UspsProxy = require('../../lib/carrier-proxies/usps-proxy');
 const UspsRateRequestBuilder = require('../../lib/request-builders/usps-rate-request-builder');
+const { CARRIERS } = require('@shipsmart/constants');
 
 class UspsRateService extends BaseCarrierRateService {
   constructor(carrierCredential) {
     super(carrierCredential);
     // Pass carrier config to proxy if available (DB-driven approach)
     this.proxy = new UspsProxy(this.carrierConfig);
-    this.carrierName = 'usps';
+    this.carrierName = CARRIERS.USPS;
   }
 
 
@@ -195,10 +196,10 @@ class UspsRateService extends BaseCarrierRateService {
     try {
       logger.info('[UspsRateService] Validating credentials');
       await this.proxy.authenticate(this.decryptedCredentials);
-      return { valid: true, carrier: 'usps' };
+      return { valid: true, carrier: CARRIERS.USPS };
     } catch (error) {
       logger.error('[UspsRateService] Credential validation failed', { error: error.message });
-      return { valid: false, carrier: 'usps', error: error.message };
+      return { valid: false, carrier: CARRIERS.USPS, error: error.message };
     }
   }
 }
