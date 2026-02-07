@@ -1,7 +1,16 @@
 {
   "name": "@shipsmart/env",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Configuration management with nconf for ShipSmart services",
+  "main": "./index.js",
+  "keywords": [
+    "config",
+    "environment",
+    "nconf",
+    "configuration"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED",
   "dependencies": {
     "nconf": "^0.12.0"
   }

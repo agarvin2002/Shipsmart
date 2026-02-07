@@ -1,7 +1,16 @@
 {
   "name": "@shipsmart/logger",
   "version": "1.0.0",
-  "main": "./lib/index.js",
+  "description": "Winston-based structured logging with request context for ShipSmart services",
+  "main": "./index.js",
+  "keywords": [
+    "logger",
+    "winston",
+    "logging",
+    "structured-logging"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED",
   "dependencies": {
     "@shipsmart/env": "1.0.0",
     "winston": "^3.2.1"

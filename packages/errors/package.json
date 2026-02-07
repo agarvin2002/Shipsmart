@@ -1,7 +1,15 @@
 {
   "name": "@shipsmart/errors",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Custom error classes for ShipSmart services with HTTP status code integration",
+  "main": "./index.js",
+  "keywords": [
+    "errors",
+    "exceptions",
+    "http-errors"
+  ],
+  "author": "ShipSmart",
+  "license": "UNLICENSED",
   "dependencies": {
     "@shipsmart/constants": "1.0.0"
   }
