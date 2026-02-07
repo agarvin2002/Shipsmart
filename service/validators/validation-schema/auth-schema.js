@@ -1,19 +1,20 @@
 const Joi = require('@hapi/joi');
+const { VALIDATION_LIMITS } = require('@shipsmart/constants');
 
 // Strong password regex:
-// - At least 12 characters
+// - At least PASSWORD_MIN_LENGTH (12) characters
 // - At least one uppercase letter
 // - At least one lowercase letter
 // - At least one digit
 // - At least one special character (@$!%*?&)
-const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/;
+const strongPasswordPattern = new RegExp(`^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{${VALIDATION_LIMITS.PASSWORD_MIN_LENGTH},}$`);
 
-const passwordError = new Error('Password must be at least 12 characters and contain uppercase, lowercase, digit, and special character (@$!%*?&)');
+const passwordError = new Error(`Password must be at least ${VALIDATION_LIMITS.PASSWORD_MIN_LENGTH} characters and contain uppercase, lowercase, digit, and special character (@$!%*?&)`);
 
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string()
-    .min(12)
+    .min(VALIDATION_LIMITS.PASSWORD_MIN_LENGTH)
     .regex(strongPasswordPattern)
     .required()
     .error(passwordError),
@@ -35,7 +36,7 @@ const forgotPasswordSchema = Joi.object({
 const resetPasswordSchema = Joi.object({
   token: Joi.string().required(),
   new_password: Joi.string()
-    .min(12)
+    .min(VALIDATION_LIMITS.PASSWORD_MIN_LENGTH)
     .regex(strongPasswordPattern)
     .required()
     .error(passwordError),
