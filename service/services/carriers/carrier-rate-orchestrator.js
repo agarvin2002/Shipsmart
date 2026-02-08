@@ -1,6 +1,6 @@
 /* global logger */
 const CarrierRouter = require('../../lib/carrier-router');
-const RedisWrapper = require('@shipsmart/redis');
+const { RedisWrapper } = require('@shipsmart/redis');
 const AddressRepository = require('../../repositories/address-repository');
 const PackageNormalizer = require('../../helpers/package-normalizer');
 const { Rate, RateHistory } = require('../../models');
