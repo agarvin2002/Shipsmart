@@ -17,8 +17,8 @@ class FedexRateService extends BaseCarrierRateService {
     try {
       this.logRateFetch(shipmentData);
 
-      // 1. Authenticate with FedEx
-      const token = await this.proxy.authenticate(this.decryptedCredentials);
+      // 1. Authenticate with FedEx (cached per user)
+      const token = await this.proxy.authenticate(this.decryptedCredentials, this.credential?.user_id);
 
       // 2. Build rate request
       const rateRequest = FedexRateRequestBuilder.buildRateRequest(
@@ -152,7 +152,7 @@ class FedexRateService extends BaseCarrierRateService {
   async validateCredentials() {
     try {
       logger.info('[FedexRateService] Validating credentials');
-      await this.proxy.authenticate(this.decryptedCredentials);
+      await this.proxy.authenticate(this.decryptedCredentials, this.credential?.user_id);
       return { valid: true, carrier: CARRIERS.FEDEX };
     } catch (error) {
       logger.error('[FedexRateService] Credential validation failed', { error: error.message });

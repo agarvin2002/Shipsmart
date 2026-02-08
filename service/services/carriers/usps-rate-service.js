@@ -20,8 +20,8 @@ class UspsRateService extends BaseCarrierRateService {
       // Check if international shipment
       const isInternational = this.isInternationalShipment(shipmentData.origin, shipmentData.destination);
 
-      // 1. Authenticate with OAuth 2.0
-      const token = await this.proxy.authenticate(this.decryptedCredentials);
+      // 1. Authenticate with OAuth 2.0 (cached per user)
+      const token = await this.proxy.authenticate(this.decryptedCredentials, this.credential?.user_id);
 
       // 2. Build rate request
       const rateRequest = UspsRateRequestBuilder.buildRateRequest(shipmentData);
@@ -195,7 +195,7 @@ class UspsRateService extends BaseCarrierRateService {
   async validateCredentials() {
     try {
       logger.info('[UspsRateService] Validating credentials');
-      await this.proxy.authenticate(this.decryptedCredentials);
+      await this.proxy.authenticate(this.decryptedCredentials, this.credential?.user_id);
       return { valid: true, carrier: CARRIERS.USPS };
     } catch (error) {
       logger.error('[UspsRateService] Credential validation failed', { error: error.message });
