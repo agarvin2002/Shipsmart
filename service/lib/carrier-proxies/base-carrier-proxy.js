@@ -3,6 +3,7 @@ const axios = require('axios');
 const cls = require('cls-hooked');
 const { getWorkerProducer } = require('../../workers/utils/producer');
 const { WorkerJobs, TIMEOUTS } = require('@shipsmart/constants');
+const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
 
 // Get the existing CLS namespace
 const namespace = cls.getNamespace('shipsmart_sequel_trans');
@@ -252,6 +253,53 @@ class BaseCarrierProxy {
 
     logger.error(`[${this.carrierName}Proxy] Unexpected error`, { error: error.message, endpoint });
     throw new Error(`${this.carrierName} API error: ${error.message}`);
+  }
+
+  _buildTokenCacheKey(carrier, clientId, userId) {
+    return RedisWrapper.getRedisKey(RedisKeys.CARRIER_TOKEN, {
+      carrier,
+      clientId,
+      userId,
+    });
+  }
+
+  async _getCachedToken(cacheKey) {
+    try {
+      const cachedToken = await RedisWrapper.get(cacheKey);
+
+      if (cachedToken) {
+        logger.info(`[${this.carrierName}Proxy] Token cache hit`, { cacheKey });
+        return cachedToken;
+      }
+
+      logger.debug(`[${this.carrierName}Proxy] Token cache miss`, { cacheKey });
+      return null;
+    } catch (error) {
+      logger.warn(`[${this.carrierName}Proxy] Token cache read failed, fetching fresh token`, {
+        error: error.message,
+        cacheKey,
+      });
+      return null;
+    }
+  }
+
+  async _cacheToken(cacheKey, token, expiresIn) {
+    try {
+      const ttl = expiresIn - TIMEOUTS.TOKEN_CACHE_SAFETY_MARGIN_SECONDS;
+
+      if (ttl <= 0) {
+        logger.warn(`[${this.carrierName}Proxy] Token TTL too short, skipping cache`, { expiresIn });
+        return;
+      }
+
+      await RedisWrapper.setWithExpiry(cacheKey, token, ttl);
+      logger.info(`[${this.carrierName}Proxy] Token cached successfully`, { cacheKey, ttl });
+    } catch (error) {
+      logger.warn(`[${this.carrierName}Proxy] Token cache write failed`, {
+        error: error.message,
+        cacheKey,
+      });
+    }
   }
 }
 
