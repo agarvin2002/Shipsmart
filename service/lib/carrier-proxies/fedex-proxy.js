@@ -1,6 +1,7 @@
 /* global logger */
 const BaseCarrierProxy = require('./base-carrier-proxy');
 const config = require('@shipsmart/env');
+const { CARRIERS, TIMEOUTS } = require('@shipsmart/constants');
 
 class FedexProxy extends BaseCarrierProxy {
   constructor(carrierConfig = null) {
@@ -16,8 +17,17 @@ class FedexProxy extends BaseCarrierProxy {
   }
 
   
-  async authenticate(credentials) {
+  async authenticate(credentials, userId = null) {
     const { client_id, client_secret } = credentials;
+
+    // Check cache if userId is provided
+    if (userId) {
+      const cacheKey = this._buildTokenCacheKey(CARRIERS.FEDEX, client_id, userId);
+      const cachedToken = await this._getCachedToken(cacheKey);
+      if (cachedToken) {
+        return cachedToken;
+      }
+    }
 
     try {
       logger.info('[FedexProxy] Authenticating with OAuth 2.0');
@@ -34,11 +44,20 @@ class FedexProxy extends BaseCarrierProxy {
           client_id,
           client_secret,
         }).toString(),
-        operation: 'authenticate', // For carrier API logging
+        operation: 'authenticate',
       });
 
+      const token = response.access_token;
+
+      // Cache token if userId is provided
+      if (userId) {
+        const cacheKey = this._buildTokenCacheKey(CARRIERS.FEDEX, client_id, userId);
+        const expiresIn = response.expires_in || TIMEOUTS.CACHE_CARRIER_TOKENS;
+        await this._cacheToken(cacheKey, token, expiresIn);
+      }
+
       logger.info('[FedexProxy] Authentication successful');
-      return response.access_token;
+      return token;
     } catch (error) {
       logger.error('[FedexProxy] Authentication failed', { error: error.message });
       throw new Error(`FedEx authentication failed: ${error.message}`);

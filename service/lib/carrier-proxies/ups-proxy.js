@@ -1,6 +1,7 @@
 /* global logger */
 const BaseCarrierProxy = require('./base-carrier-proxy');
 const config = require('@shipsmart/env');
+const { CARRIERS, TIMEOUTS } = require('@shipsmart/constants');
 
 class UpsProxy extends BaseCarrierProxy {
   constructor(carrierConfig = null) {
@@ -16,8 +17,17 @@ class UpsProxy extends BaseCarrierProxy {
   }
 
   
-  async authenticate(credentials) {
+  async authenticate(credentials, userId = null) {
     const { client_id, client_secret, merchant_id, account_number, account_numbers } = credentials;
+
+    // Check cache if userId is provided
+    if (userId) {
+      const cacheKey = this._buildTokenCacheKey(CARRIERS.UPS, client_id, userId);
+      const cachedToken = await this._getCachedToken(cacheKey);
+      if (cachedToken) {
+        return cachedToken;
+      }
+    }
 
     try {
       logger.info('[UpsProxy] Authenticating with OAuth 2.0');
@@ -38,11 +48,20 @@ class UpsProxy extends BaseCarrierProxy {
         data: new URLSearchParams({
           grant_type: 'client_credentials',
         }).toString(),
-        operation: 'authenticate', // For carrier API logging
+        operation: 'authenticate',
       });
 
+      const token = response.access_token;
+
+      // Cache token if userId is provided
+      if (userId) {
+        const cacheKey = this._buildTokenCacheKey(CARRIERS.UPS, client_id, userId);
+        const expiresIn = response.expires_in || TIMEOUTS.CACHE_CARRIER_TOKENS;
+        await this._cacheToken(cacheKey, token, expiresIn);
+      }
+
       logger.info('[UpsProxy] Authentication successful');
-      return response.access_token;
+      return token;
     } catch (error) {
       logger.error('[UpsProxy] Authentication failed', { error: error.message });
       throw new Error(`UPS authentication failed: ${error.message}`);
