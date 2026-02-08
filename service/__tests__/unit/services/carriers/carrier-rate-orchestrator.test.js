@@ -33,9 +33,11 @@ jest.mock('../../../../models', () => ({
   CarrierService: jest.fn(),
 }));
 jest.mock('@shipsmart/redis', () => ({
-  get: jest.fn(),
-  setWithExpiry: jest.fn(),
-  del: jest.fn()
+  RedisWrapper: {
+    get: jest.fn(),
+    setWithExpiry: jest.fn(),
+    del: jest.fn()
+  }
 }));
 jest.mock('../../../../helpers/package-normalizer', () => ({
   normalize: jest.fn()
@@ -46,7 +48,7 @@ const CarrierRouter = require('../../../../lib/carrier-router');
 const AddressRepository = require('../../../../repositories/address-repository');
 const { Rate, RateHistory } = require('../../../../models');
 
-const RedisWrapper = require('@shipsmart/redis');
+const { RedisWrapper } = require('@shipsmart/redis');
 const PackageNormalizer = require('../../../../helpers/package-normalizer');
 
 // Mock cls-hooked
