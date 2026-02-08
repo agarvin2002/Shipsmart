@@ -24,6 +24,18 @@ const { getWorkerProducer } = require('../../../../workers/utils/producer');
 jest.mock('axios');
 jest.mock('cls-hooked');
 jest.mock('../../../../workers/utils/producer');
+jest.mock('@shipsmart/redis', () => ({
+  RedisWrapper: {
+    get: jest.fn(),
+    setWithExpiry: jest.fn(),
+    getRedisKey: jest.fn((template, data) =>
+      `CARRIER_TOKEN:${data.carrier}:${data.clientId}:${data.userId}`
+    ),
+  },
+  RedisKeys: {
+    CARRIER_TOKEN: 'CARRIER_TOKEN:%(carrier)s:%(clientId)s:%(userId)s',
+  },
+}));
 
 describe('BaseCarrierProxy', () => {
   let proxy;

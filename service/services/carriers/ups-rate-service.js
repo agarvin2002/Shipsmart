@@ -17,8 +17,8 @@ class UpsRateService extends BaseCarrierRateService {
     try {
       this.logRateFetch(shipmentData);
 
-      // 1. Authenticate with UPS
-      const token = await this.proxy.authenticate(this.decryptedCredentials);
+      // 1. Authenticate with UPS (cached per user)
+      const token = await this.proxy.authenticate(this.decryptedCredentials, this.credential?.user_id);
 
       // 2. Build rate request
       const rateRequest = UpsRateRequestBuilder.buildRateRequest(
@@ -176,7 +176,7 @@ class UpsRateService extends BaseCarrierRateService {
   async validateCredentials() {
     try {
       logger.info('[UpsRateService] Validating credentials');
-      await this.proxy.authenticate(this.decryptedCredentials);
+      await this.proxy.authenticate(this.decryptedCredentials, this.credential?.user_id);
       return { valid: true, carrier: CARRIERS.UPS };
     } catch (error) {
       logger.error('[UpsRateService] Credential validation failed', { error: error.message });

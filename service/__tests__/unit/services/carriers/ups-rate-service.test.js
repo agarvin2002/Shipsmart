@@ -35,6 +35,7 @@ describe('UpsRateService Unit Tests', () => {
     // Setup carrier credential
     mockCarrierCredential = {
       carrier: 'ups',
+      user_id: 'user-test-456',
       client_id_encrypted: 'encrypted_client_id',
       client_secret_encrypted: 'encrypted_client_secret',
       account_numbers: ['ABC123'],
@@ -105,7 +106,7 @@ describe('UpsRateService Unit Tests', () => {
       const rates = await upsService.getRates(shipmentData);
 
       // Assert
-      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials);
+      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials, 'user-test-456');
       expect(UpsRateRequestBuilder.buildRateRequest).toHaveBeenCalledWith(
         shipmentData,
         mockDecryptedCredentials
@@ -504,7 +505,7 @@ describe('UpsRateService Unit Tests', () => {
       const result = await upsService.validateCredentials();
 
       // Assert
-      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials);
+      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials, 'user-test-456');
       expect(result.valid).toBe(true);
       expect(result.carrier).toBe('ups');
     });

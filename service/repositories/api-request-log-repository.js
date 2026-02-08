@@ -18,6 +18,7 @@ const { PAGINATION } = require('@shipsmart/constants');
 class ApiRequestLogRepository {
   /**
    * UPSERT: Insert or Update based on shipment_id
+   * Uses atomic findOrCreate + update to prevent race conditions
    * If shipment_id exists, update with latest data and increment query_count
    * If not, insert new record
    *
@@ -27,29 +28,48 @@ class ApiRequestLogRepository {
   async upsert(logData) {
     const now = new Date();
 
-    // Check if record exists
-    const existing = await ApiRequestLog.findOne({
-      where: { shipment_id: logData.shipment_id }
-    });
+    try {
+      // Atomic findOrCreate - race-condition safe
+      const [record, created] = await ApiRequestLog.findOrCreate({
+        where: { shipment_id: logData.shipment_id },
+        defaults: {
+          ...logData,
+          query_count: 1,
+          first_queried_at: now,
+          last_queried_at: now
+        }
+      });
 
-    if (existing) {
-      // UPDATE existing record
-      await existing.update({
-        ...logData,
-        query_count: existing.query_count + 1,
-        last_queried_at: now,
-        updated_at: now
-        // first_queried_at remains unchanged
-      });
-      return existing;
-    } else {
-      // INSERT new record
-      return await ApiRequestLog.create({
-        ...logData,
-        query_count: 1,
-        first_queried_at: now,
-        last_queried_at: now
-      });
+      if (!created) {
+        // Record existed - UPDATE with latest data
+        await record.update({
+          ...logData,
+          query_count: record.query_count + 1,
+          last_queried_at: now,
+          updated_at: now
+          // first_queried_at remains unchanged
+        });
+      }
+
+      return record;
+    } catch (error) {
+      // If unique constraint error still occurs (extremely rare race), retry once
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const existing = await ApiRequestLog.findOne({
+          where: { shipment_id: logData.shipment_id }
+        });
+
+        if (existing) {
+          await existing.update({
+            ...logData,
+            query_count: existing.query_count + 1,
+            last_queried_at: now,
+            updated_at: now
+          });
+          return existing;
+        }
+      }
+      throw error;
     }
   }
 

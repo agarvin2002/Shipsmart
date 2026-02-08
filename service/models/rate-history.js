@@ -66,6 +66,7 @@ module.exports = (sequelize, DataTypes) => {
     created_at: {
       allowNull: false,
       type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
     },
   }, {
     tableName: 'rate_history',

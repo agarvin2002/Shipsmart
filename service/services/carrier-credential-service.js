@@ -3,6 +3,7 @@ const CarrierCredentialRepository = require('../repositories/carrier-credential-
 const CryptoHelper = require('../helpers/crypto-helper');
 const CarrierRouter = require('../lib/carrier-router');
 const { NotFoundError, ValidationError } = require('@shipsmart/errors');
+const { RedisWrapper, RedisKeys } = require('@shipsmart/redis');
 
 class CarrierCredentialService {
   constructor() {
@@ -116,6 +117,12 @@ class CarrierCredentialService {
 
       const updated = await this.credentialRepository.update(id, userId, updateData);
 
+      // Invalidate cached token when credentials change
+      if (data.client_id || data.client_secret) {
+        const currentClientId = CryptoHelper.decrypt(updated.client_id_encrypted);
+        await this._invalidateTokenCache(userId, credential.carrier, currentClientId);
+      }
+
       const credData = updated.toJSON();
       credData.client_id = CryptoHelper.decrypt(credData.client_id_encrypted);
       credData.client_secret = CryptoHelper.decrypt(credData.client_secret_encrypted);
@@ -137,6 +144,10 @@ class CarrierCredentialService {
       if (!credential) {
         throw new NotFoundError('Credential', `Credential with id ${id} not found`);
       }
+
+      // Invalidate cached token before deleting credential
+      const clientId = CryptoHelper.decrypt(credential.client_id_encrypted);
+      await this._invalidateTokenCache(userId, credential.carrier, clientId);
 
       return await this.credentialRepository.delete(id, userId);
     } catch (error) {
@@ -197,6 +208,31 @@ class CarrierCredentialService {
     } catch (error) {
       logger.error(`Error validating credential ${id}: ${error.stack}`);
       throw error;
+    }
+  }
+  async _invalidateTokenCache(userId, carrier, clientId) {
+    try {
+      const cacheKey = RedisWrapper.getRedisKey(RedisKeys.CARRIER_TOKEN, {
+        carrier,
+        clientId,
+        userId,
+      });
+
+      const deleted = await RedisWrapper.del(cacheKey);
+
+      if (deleted > 0) {
+        logger.info('[CarrierCredentialService] Invalidated token cache', {
+          userId,
+          carrier,
+          cacheKey,
+        });
+      }
+    } catch (error) {
+      logger.warn('[CarrierCredentialService] Failed to invalidate token cache', {
+        error: error.message,
+        userId,
+        carrier,
+      });
     }
   }
 }

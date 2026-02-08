@@ -1,6 +1,7 @@
 /* global logger */
 const BaseCarrierProxy = require('./base-carrier-proxy');
 const config = require('@shipsmart/env');
+const { CARRIERS, TIMEOUTS } = require('@shipsmart/constants');
 
 class UspsProxy extends BaseCarrierProxy {
   constructor(carrierConfig = null) {
@@ -16,8 +17,17 @@ class UspsProxy extends BaseCarrierProxy {
   }
 
   
-  async authenticate(credentials) {
+  async authenticate(credentials, userId = null) {
     const { client_id, client_secret } = credentials;
+
+    // Check cache if userId is provided
+    if (userId) {
+      const cacheKey = this._buildTokenCacheKey(CARRIERS.USPS, client_id, userId);
+      const cachedToken = await this._getCachedToken(cacheKey);
+      if (cachedToken) {
+        return cachedToken;
+      }
+    }
 
     try {
       logger.info('[UspsProxy] Authenticating with OAuth 2.0');
@@ -32,11 +42,20 @@ class UspsProxy extends BaseCarrierProxy {
           client_secret,
           grant_type: 'client_credentials',
         },
-        operation: 'authenticate', // For carrier API logging
+        operation: 'authenticate',
       });
 
+      const token = response.access_token;
+
+      // Cache token if userId is provided
+      if (userId) {
+        const cacheKey = this._buildTokenCacheKey(CARRIERS.USPS, client_id, userId);
+        const expiresIn = response.expires_in || TIMEOUTS.CACHE_CARRIER_TOKENS;
+        await this._cacheToken(cacheKey, token, expiresIn);
+      }
+
       logger.info('[UspsProxy] Authentication successful');
-      return response.access_token;
+      return token;
     } catch (error) {
       logger.error('[UspsProxy] Authentication failed', { error: error.message });
       throw new Error(`USPS authentication failed: ${error.message}`);

@@ -35,6 +35,7 @@ describe('FedexRateService Unit Tests', () => {
     // Setup carrier credential
     mockCarrierCredential = {
       carrier: 'fedex',
+      user_id: 'user-test-123',
       client_id_encrypted: 'encrypted_client_id',
       client_secret_encrypted: 'encrypted_client_secret',
       account_numbers: ['123456789'],
@@ -107,7 +108,7 @@ describe('FedexRateService Unit Tests', () => {
       const rates = await fedexService.getRates(shipmentData);
 
       // Assert
-      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials);
+      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials, 'user-test-123');
       expect(FedexRateRequestBuilder.buildRateRequest).toHaveBeenCalledWith(
         shipmentData,
         mockDecryptedCredentials
@@ -520,7 +521,7 @@ describe('FedexRateService Unit Tests', () => {
       const result = await fedexService.validateCredentials();
 
       // Assert
-      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials);
+      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials, 'user-test-123');
       expect(result.valid).toBe(true);
       expect(result.carrier).toBe('fedex');
     });
