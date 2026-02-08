@@ -13,6 +13,17 @@ jest.mock('uuid', () => ({
 jest.mock('../../../repositories/carrier-credential-repository');
 jest.mock('../../../helpers/crypto-helper');
 jest.mock('../../../lib/carrier-router');
+jest.mock('@shipsmart/redis', () => ({
+  RedisWrapper: {
+    del: jest.fn().mockResolvedValue(0),
+    getRedisKey: jest.fn((template, data) =>
+      `CARRIER_TOKEN:${data.carrier}:${data.clientId}:${data.userId}`
+    ),
+  },
+  RedisKeys: {
+    CARRIER_TOKEN: 'CARRIER_TOKEN:%(carrier)s:%(clientId)s:%(userId)s',
+  },
+}));
 
 const CarrierCredentialService = require('../../../services/carrier-credential-service');
 const CarrierCredentialRepository = require('../../../repositories/carrier-credential-repository');
@@ -20,6 +31,7 @@ const CryptoHelper = require('../../../helpers/crypto-helper');
 const CarrierRouter = require('../../../lib/carrier-router');
 const { NotFoundError, ValidationError } = require('@shipsmart/errors');
 const { createMockCarrierCredential } = require('../../utils/test-helpers');
+const { RedisWrapper } = require('@shipsmart/redis');
 
 describe('CarrierCredentialService', () => {
   let service;
@@ -44,6 +56,12 @@ describe('CarrierCredentialService', () => {
     // Setup CryptoHelper mock
     CryptoHelper.encrypt = jest.fn((text) => `encrypted_${text}`);
     CryptoHelper.decrypt = jest.fn((encrypted) => encrypted.replace('encrypted_', ''));
+
+    // Re-setup Redis mock after clearAllMocks
+    RedisWrapper.del.mockResolvedValue(0);
+    RedisWrapper.getRedisKey.mockImplementation((template, data) =>
+      `CARRIER_TOKEN:${data.carrier}:${data.clientId}:${data.userId}`
+    );
 
     // Setup global logger
     global.logger = {

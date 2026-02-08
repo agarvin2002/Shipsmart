@@ -35,6 +35,7 @@ describe('UspsRateService Unit Tests', () => {
     // Setup carrier credential
     mockCarrierCredential = {
       carrier: 'usps',
+      user_id: 'user-test-789',
       client_id_encrypted: 'encrypted_client_id',
       client_secret_encrypted: 'encrypted_client_secret',
       account_numbers: [],
@@ -114,7 +115,7 @@ describe('UspsRateService Unit Tests', () => {
       const rates = await uspsService.getRates(shipmentData);
 
       // Assert
-      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials);
+      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials, 'user-test-789');
       expect(UspsRateRequestBuilder.buildRateRequest).toHaveBeenCalledWith(shipmentData);
       expect(UspsRateRequestBuilder.buildTransitTimeRequest).toHaveBeenCalledWith(shipmentData);
       expect(mockProxyInstance.getRates).toHaveBeenCalledWith(mockToken, mockRateRequest, false);
@@ -611,7 +612,7 @@ describe('UspsRateService Unit Tests', () => {
       const result = await uspsService.validateCredentials();
 
       // Assert
-      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials);
+      expect(mockProxyInstance.authenticate).toHaveBeenCalledWith(mockDecryptedCredentials, 'user-test-789');
       expect(result.valid).toBe(true);
       expect(result.carrier).toBe('usps');
     });

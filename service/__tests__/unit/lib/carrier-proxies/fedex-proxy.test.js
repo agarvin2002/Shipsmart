@@ -13,10 +13,23 @@ jest.mock('cls-hooked', () => ({
 }));
 jest.mock('@shipsmart/env');
 jest.mock('axios');
+jest.mock('@shipsmart/redis', () => ({
+  RedisWrapper: {
+    get: jest.fn(),
+    setWithExpiry: jest.fn(),
+    getRedisKey: jest.fn((template, data) =>
+      `CARRIER_TOKEN:${data.carrier}:${data.clientId}:${data.userId}`
+    ),
+  },
+  RedisKeys: {
+    CARRIER_TOKEN: 'CARRIER_TOKEN:%(carrier)s:%(clientId)s:%(userId)s',
+  },
+}));
 
 const FedexProxy = require('../../../../lib/carrier-proxies/fedex-proxy');
 const config = require('@shipsmart/env');
 const axios = require('axios');
+const { RedisWrapper } = require('@shipsmart/redis');
 
 describe('FedexProxy', () => {
   let proxy;
@@ -35,6 +48,7 @@ describe('FedexProxy', () => {
       info: jest.fn(),
       error: jest.fn(),
       warn: jest.fn(),
+      debug: jest.fn(),
     };
   });
 
@@ -233,6 +247,106 @@ describe('FedexProxy', () => {
       expect(logger.error).toHaveBeenCalledWith('[FedexProxy] Credential validation failed', {
         error: 'Authentication failed',
       });
+    });
+  });
+
+  describe('#authenticate with token caching', () => {
+    const credentials = {
+      client_id: 'fedex_client_id',
+      client_secret: 'fedex_client_secret',
+    };
+    const userId = 'user-123';
+
+    beforeEach(() => {
+      proxy = new FedexProxy();
+      proxy.makeRequest = jest.fn().mockResolvedValue({
+        access_token: 'fresh_fedex_token',
+        token_type: 'Bearer',
+        expires_in: 3599,
+      });
+
+      // Re-setup Redis mock after clearAllMocks
+      RedisWrapper.getRedisKey.mockImplementation((template, data) =>
+        `CARRIER_TOKEN:${data.carrier}:${data.clientId}:${data.userId}`
+      );
+    });
+
+    it('should return cached token on cache hit', async () => {
+      RedisWrapper.get.mockResolvedValue('cached_fedex_token');
+
+      const token = await proxy.authenticate(credentials, userId);
+
+      expect(token).toBe('cached_fedex_token');
+      expect(proxy.makeRequest).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith(
+        '[FedExProxy] Token cache hit',
+        expect.objectContaining({ cacheKey: expect.any(String) })
+      );
+    });
+
+    it('should fetch and cache token on cache miss', async () => {
+      RedisWrapper.get.mockResolvedValue(null);
+      RedisWrapper.setWithExpiry.mockResolvedValue('OK');
+
+      const token = await proxy.authenticate(credentials, userId);
+
+      expect(token).toBe('fresh_fedex_token');
+      expect(proxy.makeRequest).toHaveBeenCalled();
+      expect(RedisWrapper.setWithExpiry).toHaveBeenCalledWith(
+        expect.stringContaining('CARRIER_TOKEN:fedex:fedex_client_id:user-123'),
+        'fresh_fedex_token',
+        3539 // 3599 - 60 safety margin
+      );
+    });
+
+    it('should gracefully handle Redis get failure', async () => {
+      RedisWrapper.get.mockRejectedValue(new Error('Redis connection failed'));
+
+      const token = await proxy.authenticate(credentials, userId);
+
+      expect(token).toBe('fresh_fedex_token');
+      expect(proxy.makeRequest).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Token cache read failed'),
+        expect.any(Object)
+      );
+    });
+
+    it('should gracefully handle Redis set failure', async () => {
+      RedisWrapper.get.mockResolvedValue(null);
+      RedisWrapper.setWithExpiry.mockRejectedValue(new Error('Redis write failed'));
+
+      const token = await proxy.authenticate(credentials, userId);
+
+      expect(token).toBe('fresh_fedex_token');
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Token cache write failed'),
+        expect.any(Object)
+      );
+    });
+
+    it('should use default TTL when expires_in is missing', async () => {
+      RedisWrapper.get.mockResolvedValue(null);
+      RedisWrapper.setWithExpiry.mockResolvedValue('OK');
+      proxy.makeRequest = jest.fn().mockResolvedValue({
+        access_token: 'token_no_expiry',
+      });
+
+      await proxy.authenticate(credentials, userId);
+
+      expect(RedisWrapper.setWithExpiry).toHaveBeenCalledWith(
+        expect.any(String),
+        'token_no_expiry',
+        3540 // 3600 (default CACHE_CARRIER_TOKENS) - 60
+      );
+    });
+
+    it('should skip caching when userId is null', async () => {
+      const token = await proxy.authenticate(credentials);
+
+      expect(token).toBe('fresh_fedex_token');
+      expect(RedisWrapper.get).not.toHaveBeenCalled();
+      expect(RedisWrapper.setWithExpiry).not.toHaveBeenCalled();
     });
   });
 });
