@@ -19,6 +19,7 @@ const { PAGINATION } = require('@shipsmart/constants');
 class CarrierApiLogRepository {
   /**
    * UPSERT: Insert or Update based on shipment_id + carrier
+   * Uses atomic findOrCreate + update to prevent race conditions
    * If shipment_id + carrier exists, update with latest data and increment query_count
    * If not, insert new record
    *
@@ -28,32 +29,54 @@ class CarrierApiLogRepository {
   async upsert(logData) {
     const now = new Date();
 
-    // Check if record exists for this shipment + carrier
-    const existing = await CarrierApiLog.findOne({
-      where: {
-        shipment_id: logData.shipment_id,
-        carrier: logData.carrier
-      }
-    });
+    try {
+      // Atomic findOrCreate - race-condition safe
+      const [record, created] = await CarrierApiLog.findOrCreate({
+        where: {
+          shipment_id: logData.shipment_id,
+          carrier: logData.carrier
+        },
+        defaults: {
+          ...logData,
+          query_count: 1,
+          first_queried_at: now,
+          last_queried_at: now
+        }
+      });
 
-    if (existing) {
-      // UPDATE existing record
-      await existing.update({
-        ...logData,
-        query_count: existing.query_count + 1,
-        last_queried_at: now,
-        updated_at: now
-        // first_queried_at remains unchanged
-      });
-      return existing;
-    } else {
-      // INSERT new record
-      return await CarrierApiLog.create({
-        ...logData,
-        query_count: 1,
-        first_queried_at: now,
-        last_queried_at: now
-      });
+      if (!created) {
+        // Record existed - UPDATE with latest data
+        await record.update({
+          ...logData,
+          query_count: record.query_count + 1,
+          last_queried_at: now,
+          updated_at: now
+          // first_queried_at remains unchanged
+        });
+      }
+
+      return record;
+    } catch (error) {
+      // If unique constraint error still occurs (extremely rare race), retry once
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const existing = await CarrierApiLog.findOne({
+          where: {
+            shipment_id: logData.shipment_id,
+            carrier: logData.carrier
+          }
+        });
+
+        if (existing) {
+          await existing.update({
+            ...logData,
+            query_count: existing.query_count + 1,
+            last_queried_at: now,
+            updated_at: now
+          });
+          return existing;
+        }
+      }
+      throw error;
     }
   }
 
