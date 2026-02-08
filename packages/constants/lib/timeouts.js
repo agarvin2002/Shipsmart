@@ -12,6 +12,7 @@ const TIMEOUTS = {
   // Cache TTL (seconds)
   CACHE_RATE_QUOTES: 300, // 5 minutes
   CACHE_CARRIER_TOKENS: 3600, // 1 hour
+  TOKEN_CACHE_SAFETY_MARGIN_SECONDS: 60, // Safety buffer before token expiry
   CACHE_USER_SESSION: 86400, // 24 hours
 
   // Authentication expiry (seconds)
