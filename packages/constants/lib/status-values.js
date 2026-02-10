@@ -18,8 +18,18 @@ const JOB_STATUS = {
   FAILED: 'failed',
 };
 
+const EXCEL_JOB_STATUS = {
+  PENDING: 'pending',
+  PARSING: 'parsing',
+  PROCESSING: 'processing',
+  GENERATING: 'generating',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+};
+
 module.exports = {
   USER_STATUS,
   CREDENTIAL_STATUS,
   JOB_STATUS,
+  EXCEL_JOB_STATUS,
 };

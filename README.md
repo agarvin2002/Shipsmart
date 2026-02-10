@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Node.js](https://img.shields.io/badge/node-v22.x-brightgreen) ![Yarn](https://img.shields.io/badge/yarn-3.6.1-blue) ![PostgreSQL](https://img.shields.io/badge/postgresql-14-blue) ![Redis](https://img.shields.io/badge/redis-7-red) ![Jest](https://img.shields.io/badge/tests-580%2B-green) ![Coverage](https://img.shields.io/badge/coverage-73%25%2B-yellowgreen) ![License](https://img.shields.io/badge/license-MIT-blue)
+![Node.js](https://img.shields.io/badge/node-v22.x-brightgreen) ![Yarn](https://img.shields.io/badge/yarn-3.6.1-blue) ![PostgreSQL](https://img.shields.io/badge/postgresql-14-blue) ![Redis](https://img.shields.io/badge/redis-7-red) ![Jest](https://img.shields.io/badge/tests-672%2B-green) ![Coverage](https://img.shields.io/badge/coverage-73%25%2B-yellowgreen) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 **Production-ready multi-carrier shipping rate comparison platform**
 
@@ -17,6 +17,7 @@ Compare real-time shipping rates across FedEx, UPS, USPS, and DHL with encrypted
 ## Features
 
 - **Multi-Carrier Integration** - FedEx, UPS, USPS, and DHL support with parallel rate fetching
+- **Batch Rate Processing** - Upload Excel files (1-10 shipments) for async rate comparisons with styled results
 - **Secure by Default** - AES-256-CBC encrypted credentials, JWT authentication, rate limiting
 - **High Performance** - Redis caching (5min TTL), async job processing with Bull queues
 - **Rate Analytics** - Historical tracking, comparison analytics, cheapest/fastest recommendations
@@ -77,8 +78,9 @@ curl http://localhost:3001/health
 | **Cache/Queue** | Redis v7, Bull v4.1.1, Bull Arena |
 | **Security** | JWT, Passport.js, bcrypt, AES-256-CBC, Helmet |
 | **Validation** | Joi, express-rate-limit |
+| **File Processing** | ExcelJS, Multer, AWS S3 |
 | **Observability** | Winston (structured JSON), Sentry |
-| **Testing** | Jest 29.7, Supertest (580+ tests, 73%+ coverage) |
+| **Testing** | Jest 29.7, Supertest (672+ tests, 73%+ coverage) |
 | **DevOps** | Docker, Nginx, PM2, GitHub Actions, Terraform |
 
 ---
@@ -163,10 +165,13 @@ GET    /auth/verify-email/:token   # Verify email address
 
 ### Rate Shopping
 ```http
-POST   /shipments/rates            # Fetch rates (sync or async via ?async=true)
-POST   /shipments/rates/compare    # Compare rates (force refresh, sync)
-GET    /shipments/rates/job/:jobId # Check async job status/results
-GET    /shipments/rates/history    # Rate history by route
+POST   /shipments/rates                      # Fetch rates (sync or async via ?async=true)
+POST   /shipments/rates/compare              # Compare rates (force refresh, sync)
+GET    /shipments/rates/job/:jobId           # Check async job status/results
+GET    /shipments/rates/history              # Rate history by route
+POST   /shipments/rates/excel                # Upload Excel file for batch rate comparison (async)
+GET    /shipments/rates/excel/job/:jobId     # Check Excel job status/results
+GET    /shipments/rates/excel/download/:jobId # Download processed Excel with rates
 ```
 
 ### Carriers
@@ -218,7 +223,7 @@ GET    /logs/search                # Search logs
 GET    /health                     # System health (no auth required)
 ```
 
-**Rate Limiting**: Login (5/15min), Register (3/15min), Async jobs (20/15min per user)
+**Rate Limiting**: Login (5/15min), Register (3/15min), Async jobs (20/15min), Excel uploads (10/15min per user)
 
 ---
 
@@ -348,12 +353,13 @@ For production, override config values with environment variables:
 **Bull Queue System** (backed by Redis)
 
 - **Async rate fetching** - Long-running carrier API calls processed in background
+- **Excel rate processing** - Batch rate comparison from Excel files (1-10 shipments per file)
 - **API logging** - Request/response logging queued for async persistence
 - **Carrier API logging** - Carrier API call logging queued for async persistence
 - **Job monitoring** via Bull Arena UI (http://localhost:3050)
 - **Graceful shutdown** with configurable timeouts (8s prod, 3s dev)
 
-**Queue**: `shipsmart-worker` with concurrency limits (5 rate fetches, 3 log jobs)
+**Queue**: `shipsmart-worker` with concurrency limits (5 rate fetches, 3 Excel jobs, 3 log jobs)
 
 ---
 
@@ -366,13 +372,13 @@ cd service && yarn test           # Run all tests
 cd service && yarn test:coverage  # With coverage report
 ```
 
-**Coverage**: 73%+ across 580+ tests in 37 test suites
+**Coverage**: 73%+ across 672+ tests in 41 test suites
 
-| Category | What's Tested |
-|----------|--------------|
-| **Unit Tests** | Controllers, Services, Helpers, Presenters, Middleware |
-| **Integration** | API endpoints, Database operations (scaffolded) |
-| **Security** | Auth middleware, Multi-tenancy enforcement (scaffolded) |
+**Test Coverage:**
+- Unit tests for Controllers, Services, Repositories, Workers
+- Helpers, Presenters, and Middleware testing
+- Multi-tenancy enforcement verification
+- Mock patterns for external dependencies (S3, Redis, Bull queues)
 
 Test configuration: [service/jest.config.js](service/jest.config.js)
 

@@ -13,6 +13,11 @@ const VALIDATION_LIMITS = {
   // Shipment
   MAX_PACKAGES_PER_SHIPMENT: 10,
   MAX_DECLARED_VALUE: 50000,
+
+  // Excel upload
+  MAX_EXCEL_SHIPMENTS: 10,
+  MAX_EXCEL_FILE_SIZE_MB: 20,
+  EXCEL_ALLOWED_EXTENSIONS: ['.xlsx', '.xls'],
 };
 
 module.exports = {

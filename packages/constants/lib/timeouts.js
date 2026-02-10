@@ -8,6 +8,7 @@ const TIMEOUTS = {
   WORKER_JOB_DEFAULT: 60000, // 1 minute
   WORKER_JOB_EXTENDED: 120000, // 2 minutes
   WORKER_SHUTDOWN: 30000, // 30 seconds graceful shutdown
+  EXCEL_JOB_DEFAULT: 600000, // 10 minutes (60s per shipment * 10 max)
 
   // Cache TTL (seconds)
   CACHE_RATE_QUOTES: 300, // 5 minutes
@@ -19,6 +20,9 @@ const TIMEOUTS = {
   JWT_SESSION: 2592000, // 30 days
   PASSWORD_RESET_TOKEN: 3600, // 1 hour
   EMAIL_VERIFICATION_TOKEN: 86400, // 24 hours
+
+  // S3 signed URL expiry (seconds)
+  S3_DOWNLOAD_URL_EXPIRY: 172800, // 48 hours
 
   // Database retention (days)
   LOG_RETENTION_DAYS: 90,

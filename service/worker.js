@@ -5,6 +5,7 @@ const { WorkerJobs, TIMEOUTS } = require('@shipsmart/constants');
 const RateFetchConsumer = require('./workers/consumers/rate-fetch-consumer');
 const ApiLogConsumer = require('./workers/consumers/api-log-consumer');
 const CarrierApiLogConsumer = require('./workers/consumers/carrier-api-log-consumer');
+const ExcelRateFetchConsumer = require('./workers/consumers/excel-rate-fetch-consumer');
 
 const SHUTDOWN_TIMEOUT = TIMEOUTS.WORKER_SHUTDOWN;
 let isShuttingDown = false;
@@ -42,6 +43,15 @@ const start = async () => {
 
   logger.info(`Worker subscribed to ${WorkerJobs.CARRIER_API_LOG} queue with concurrency ${carrierApiLogConcurrency}`);
 
+  // Excel rate fetch queue
+  const excelRateFetchConcurrency = 3;
+  const excelRateFetchQueue = workerClient.getQueue(WorkerJobs.EXCEL_RATE_FETCH);
+  excelRateFetchQueue.process(excelRateFetchConcurrency, async (job) => {
+    return await ExcelRateFetchConsumer.perform(job);
+  });
+
+  logger.info(`Worker subscribed to ${WorkerJobs.EXCEL_RATE_FETCH} queue with concurrency ${excelRateFetchConcurrency}`);
+
   const gracefulShutdown = async (signal) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
@@ -61,7 +71,8 @@ const start = async () => {
       const queues = [
         workerClient.getQueue(WorkerJobs.RATE_FETCH),
         workerClient.getQueue(WorkerJobs.API_LOG),
-        workerClient.getQueue(WorkerJobs.CARRIER_API_LOG)
+        workerClient.getQueue(WorkerJobs.CARRIER_API_LOG),
+        workerClient.getQueue(WorkerJobs.EXCEL_RATE_FETCH)
       ];
 
       // Step 2: Pause queues to stop accepting new jobs
