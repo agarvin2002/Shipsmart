@@ -401,7 +401,75 @@ module.exports = CryptoHelper;
 #### Background Job
 1. **Producer**: `service/workers/producers/[job-name]-producer.js`
 2. **Consumer**: `service/workers/consumers/[job-name]-consumer.js`
-3. **Register**: In `service/worker.js`
+3. **Validation Schema**: `service/workers/validation/[job-name]-schema.js`
+4. **Register**: In `service/bin/worker.js`
+
+**Example: Excel Rate Processing Worker**
+
+```javascript
+// workers/producers/excel-rate-fetch-producer.js
+const { WorkerJobs } = require('@shipsmart/constants');
+const BaseProducer = require('./base-producer');
+
+class ExcelRateFetchProducer extends BaseProducer {
+  constructor() {
+    super(WorkerJobs.EXCEL_RATE_FETCH, {
+      attempts: 3,
+      priority: 3,
+      timeout: 600000, // 10 minutes (10 shipments * 60s)
+    });
+  }
+}
+
+// workers/consumers/excel-rate-fetch-consumer.js
+const Joi = require('@hapi/joi');
+const ExcelRateService = require('../../services/excel-rate-service');
+const { namespace } = require('../../models');
+
+class ExcelRateFetchConsumer {
+  static async perform(job) {
+    // 1. Validate job data with Joi schema
+    const { error, value } = Joi.validate(job.data, excelRateFetchJobSchema);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // 2. Set up CLS namespace for request tracking
+    return namespace.run(async () => {
+      namespace.set('requestId', value.requestId);
+      namespace.set('userId', value.userId);
+
+      try {
+        // 3. Update progress: parsing
+        await job.progress(10);
+
+        // 4. Process Excel file
+        const result = await ExcelRateService.processExcelRates(
+          value.fileBuffer,
+          value.originalFilename,
+          value.userId,
+          value.requestId,
+          job.id
+        );
+
+        // 5. Update progress: complete
+        await job.progress(100);
+
+        return { success: true, excelJobRecord: result };
+      } catch (error) {
+        logger.error('[ExcelRateFetchConsumer] Error:', error);
+        return { success: false, error: error.message };
+      }
+    });
+  }
+}
+
+// bin/worker.js - Register consumer
+const excelRateQueue = workerClient.getQueue(WorkerJobs.EXCEL_RATE_FETCH);
+excelRateQueue.process(3, async (job) => {
+  return ExcelRateFetchConsumer.perform(job);
+});
+```
 
 #### Shared Code
 - **Constants**: `packages/constants/` (workspace package)
@@ -1163,6 +1231,272 @@ return res.status(202).json(
 GET /shipments/rates/job/:jobId
 ```
 
+### File Upload Endpoints
+
+**Pattern:** Multipart form data with Multer middleware
+
+```javascript
+// routes/excel-rate-routes.js
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post(
+  '/shipments/rates/excel',
+  authenticate(),
+  excelRateJobLimiter,
+  upload.single('file'),
+  handleMulterError,
+  ExcelRateController.uploadExcel
+);
+
+// controller/excel-rate-controller.js
+async uploadExcel(req, res, next) {
+  try {
+    // Validate file extension
+    ExcelRateService.validateFileExtension(req.file.originalname);
+
+    // Queue job with file buffer
+    const job = await excelRateFetchProducer.publishMessage({
+      fileBuffer: req.file.buffer,
+      originalFilename: req.file.originalname,
+      userId: req.user.userId,
+      requestId: req.id,
+    });
+
+    return res.status(202).json(
+      ResponseFormatter.formatSuccess({ job_id: job.id }, req.id)
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+**Key Points:**
+- Use `multer.memoryStorage()` for in-memory buffer access
+- Validate file extension before processing
+- Pass file buffer to worker queue (not saved to disk)
+- Return 202 Accepted for async processing
+- Apply file-specific rate limiter (e.g., 10 uploads/15min)
+
+### Excel File Processing Pattern
+
+**Dependencies:** `exceljs`, `@shipsmart/s3`
+
+```javascript
+// services/excel-rate-service.js
+const ExcelJS = require('exceljs');
+const { s3Wrapper, S3KeyGenerator } = require('@shipsmart/s3');
+
+class ExcelRateService {
+  async parseExcelFile(fileBuffer) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      throw new ValidationError('Excel file has no worksheets');
+    }
+
+    const headers = [];
+    const rows = [];
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        // Extract headers (lowercase, trimmed)
+        row.eachCell((cell) => {
+          headers.push(cell.value?.toString().toLowerCase().trim());
+        });
+      } else {
+        // Extract data rows
+        const rowData = {};
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber - 1];
+          rowData[header] = cell.value;
+        });
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData);
+        }
+      }
+    });
+
+    if (rows.length > VALIDATION_LIMITS.MAX_EXCEL_SHIPMENTS) {
+      throw new ValidationError(
+        `Excel file has ${rows.length} rows. Maximum allowed is ${VALIDATION_LIMITS.MAX_EXCEL_SHIPMENTS}`
+      );
+    }
+
+    return { headers, rows };
+  }
+
+  async _generateOutputExcel(headers, results) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Rate Comparison Results');
+
+    // Define output columns (input + result columns)
+    const outputHeaders = [
+      ...headers,
+      'status',
+      'cheapest_carrier',
+      'cheapest_service',
+      'cheapest_rate',
+      'fastest_carrier',
+      'fastest_service',
+      'fastest_delivery_days',
+      'total_carriers',
+      'error_message',
+    ];
+
+    // Add header row with styling
+    const headerRow = worksheet.addRow(outputHeaders);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' },
+    };
+    headerRow.height = 20;
+
+    // Add data rows with conditional styling
+    results.forEach((result) => {
+      const row = worksheet.addRow(result);
+
+      // Success rows: light green background
+      if (result.status === 'success') {
+        row.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE2EFDA' },
+        };
+
+        // Cheapest rate: bold green text
+        const cheapestRateCell = row.getCell(outputHeaders.indexOf('cheapest_rate') + 1);
+        cheapestRateCell.font = { bold: true, color: { argb: 'FF375623' } };
+      }
+      // Error rows: light red background
+      else {
+        row.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFCE4D6' },
+        };
+      }
+    });
+
+    // Auto-width columns (min 10, max 50)
+    worksheet.columns.forEach((column) => {
+      column.width = Math.min(Math.max(column.width || 10, 10), 50);
+    });
+
+    return await workbook.xlsx.writeBuffer();
+  }
+
+  async processExcelRates(fileBuffer, originalFilename, userId, requestId, jobId) {
+    try {
+      // 1. Upload input file to S3
+      const inputS3Key = S3KeyGenerator.generateUserKey(
+        `excel-rates/input/user_${userId}`,
+        `${uuidv4()}.xlsx`
+      );
+      await s3Wrapper.uploadToAWS(inputS3Key, fileBuffer, {
+        ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      // 2. Parse Excel file
+      const { headers, rows } = await this.parseExcelFile(fileBuffer);
+
+      // 3. Create job record in database
+      const excelJob = await this.excelRateJobRepository.create({
+        jobId,
+        originalFilename,
+        inputS3Key,
+        rowCount: rows.length,
+        status: EXCEL_JOB_STATUS.PARSING,
+      }, userId);
+
+      // 4. Update status to PROCESSING
+      await this.excelRateJobRepository.update(excelJob.id, userId, {
+        status: EXCEL_JOB_STATUS.PROCESSING,
+      });
+
+      // 5. Process each row (fetch rates)
+      const results = [];
+      for (let i = 0; i < rows.length; i++) {
+        try {
+          const row = rows[i];
+          this._validateShipmentRow(row, i + 2); // +2 for 1-based index + header row
+
+          const rateRequest = this._mapRowToRateRequest(row);
+          const rateComparison = await CarrierRateOrchestrator.getRatesForShipment(
+            rateRequest,
+            { currentUser: { id: userId }, requestId },
+            { forceRefresh: true }
+          );
+
+          results.push({
+            ...row,
+            status: 'success',
+            cheapest_carrier: rateComparison.cheapest?.carrier,
+            cheapest_service: rateComparison.cheapest?.service_name,
+            cheapest_rate: rateComparison.cheapest?.rate_amount,
+            // ... more fields
+          });
+
+          // Update progress
+          const progress = Math.round(((i + 1) / rows.length) * 80) + 10; // 10-90%
+          await this.excelRateJobRepository.update(excelJob.id, userId, {
+            processedCount: i + 1,
+            successCount: results.filter(r => r.status === 'success').length,
+          });
+        } catch (error) {
+          results.push({
+            ...row,
+            status: 'error',
+            error_message: error.message,
+          });
+        }
+      }
+
+      // 6. Generate output Excel
+      await this.excelRateJobRepository.update(excelJob.id, userId, {
+        status: EXCEL_JOB_STATUS.GENERATING,
+      });
+
+      const outputBuffer = await this._generateOutputExcel(headers, results);
+
+      // 7. Upload output to S3
+      const outputS3Key = S3KeyGenerator.generateUserKey(
+        `excel-rates/output/user_${userId}`,
+        `${uuidv4()}_results.xlsx`
+      );
+      await s3Wrapper.uploadToAWS(outputS3Key, outputBuffer, {
+        ContentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      // 8. Update job record to COMPLETED
+      const completedJob = await this.excelRateJobRepository.update(excelJob.id, userId, {
+        status: EXCEL_JOB_STATUS.COMPLETED,
+        outputS3Key,
+        completedAt: new Date(),
+      });
+
+      return { success: true, excelJobRecord: completedJob };
+    } catch (error) {
+      logger.error('[ExcelRateService] Error processing Excel rates:', error);
+      throw error;
+    }
+  }
+}
+```
+
+**Key Points:**
+- Use ExcelJS for parsing and generating Excel files with styling
+- Upload input and output files to S3 with user-partitioned keys
+- Store job metadata in database for status tracking
+- Process rows sequentially with progress updates
+- Graceful error handling (mark row as failed, continue processing)
+- Apply conditional styling to output (green for success, red for errors)
+
 ### Presenter Pattern
 
 **Transform data before responses:**
@@ -1195,7 +1529,7 @@ class RatePresenter {
 ### Current State
 
 **Framework:** Jest 29.7.0 + Supertest 6.3.3
-**Coverage:** 73%+ across 580+ tests in 37 test suites
+**Coverage:** 73%+ across 672+ tests in 41 test suites
 
 ### Test Framework & Dependencies
 
@@ -1210,18 +1544,17 @@ class RatePresenter {
 
 ```
 service/__tests__/
-├── unit/                     # Pure functions, layer tests
+├── unit/                     # All test coverage (unit tests only)
 │   ├── controllers/         # Mock services, test HTTP handling
 │   ├── services/            # Mock repositories, test business logic
+│   ├── repositories/        # Mock models, test data access
+│   ├── workers/             # Mock dependencies, test job consumers
 │   ├── helpers/             # Test utility functions
 │   ├── presenters/          # Test response formatting
 │   ├── middleware/          # Test middleware behavior
 │   └── lib/                 # Test carrier proxies, builders
-├── integration/              # API endpoints, database (scaffolded)
-├── security/                 # Security-related tests (scaffolded)
-├── e2e/                      # End-to-end scenarios (scaffolded)
 ├── fixtures/                 # Test data & factories
-└── utils/                    # Test helpers & shared utilities
+└── utils/                    # Test helpers, shared utilities, mock fixtures
 ```
 
 ### Test Commands
@@ -1232,11 +1565,11 @@ cd service
 yarn test                    # Run all tests
 yarn test:watch              # Watch mode
 yarn test:coverage           # Run with coverage report
-yarn test:unit               # Unit tests only
-yarn test:integration        # Integration tests only
-yarn test:security           # Security tests only
-yarn test:e2e                # End-to-end tests only
 yarn test:ci                 # CI mode (coverage + no watch)
+
+# Run specific test files or patterns
+yarn test excel-rate         # Run all Excel rate tests
+yarn test rate-service       # Run rate service tests
 ```
 
 ### Jest Configuration
@@ -1257,10 +1590,11 @@ yarn test:ci                 # CI mode (coverage + no watch)
 
 ### Coverage Goals
 
-- **Controllers**: Mock services, test response formatting
-- **Services**: Mock repositories, test business logic
-- **Repositories**: Integration tests with test database
-- **Middleware**: Unit tests
+- **Controllers**: Mock services, test response formatting, error handling
+- **Services**: Mock repositories/external APIs, test business logic
+- **Repositories**: Mock models, test data access and multi-tenancy
+- **Workers**: Mock dependencies, test job processing and error scenarios
+- **Middleware**: Test authentication, validation, rate limiting
 - **Target**: 80%+ code coverage (current: 73%+)
 
 ### Example Test Structure
@@ -1292,6 +1626,157 @@ describe('RateService', () => {
     });
   });
 });
+```
+
+### Testing File Upload Features
+
+```javascript
+// excel-rate-controller.test.js
+const ExcelRateController = require('../../../controller/excel-rate-controller');
+const ExcelRateService = require('../../../services/excel-rate-service');
+const excelRateFetchProducer = require('../../../workers/producers/excel-rate-fetch-producer');
+
+jest.mock('../../../services/excel-rate-service');
+jest.mock('../../../workers/utils/producer');
+
+describe('ExcelRateController', () => {
+  describe('uploadExcel', () => {
+    it('should queue Excel file for processing and return job ID', async () => {
+      // Arrange
+      const req = {
+        user: { userId: 'user-123' },
+        id: 'req-123',
+        file: {
+          buffer: Buffer.from('mock excel data'),
+          originalname: 'rates.xlsx',
+        },
+      };
+      ExcelRateService.validateFileExtension = jest.fn();
+      excelRateFetchProducer.publishMessage = jest.fn().mockResolvedValue({ id: 'job-42' });
+
+      // Act
+      await ExcelRateController.uploadExcel(req, res, next);
+
+      // Assert
+      expect(ExcelRateService.validateFileExtension).toHaveBeenCalledWith('rates.xlsx');
+      expect(excelRateFetchProducer.publishMessage).toHaveBeenCalledWith({
+        fileBuffer: req.file.buffer,
+        originalFilename: 'rates.xlsx',
+        userId: 'user-123',
+        requestId: 'req-123',
+      });
+      expect(res.status).toHaveBeenCalledWith(202);
+    });
+
+    it('should return validation error for invalid file extension', async () => {
+      // Arrange
+      const req = { file: { originalname: 'rates.pdf' } };
+      ExcelRateService.validateFileExtension = jest.fn(() => {
+        throw new ValidationError('Invalid file extension');
+      });
+
+      // Act
+      await ExcelRateController.uploadExcel(req, res, next);
+
+      // Assert
+      expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+    });
+  });
+});
+```
+
+### Testing Worker Consumers
+
+```javascript
+// excel-rate-fetch-consumer.test.js
+jest.mock('../../../../services/excel-rate-service');
+jest.mock('../../../../models', () => ({
+  namespace: {
+    run: jest.fn((callback) => callback()),
+    set: jest.fn(),
+  },
+}));
+
+const ExcelRateFetchConsumer = require('../../../../workers/consumers/excel-rate-fetch-consumer');
+const ExcelRateService = require('../../../../services/excel-rate-service');
+const { namespace } = require('../../../../models');
+
+describe('ExcelRateFetchConsumer', () => {
+  it('should process Excel rate job successfully', async () => {
+    // Arrange
+    const mockJob = {
+      id: 'job-123',
+      data: {
+        fileBuffer: Buffer.from('mock data'),
+        originalFilename: 'rates.xlsx',
+        userId: 'user-123',
+        requestId: 'req-123',
+      },
+      progress: jest.fn(),
+    };
+    ExcelRateService.processExcelRates = jest.fn().mockResolvedValue({
+      success: true,
+      excelJobRecord: { id: 'job-uuid-1' },
+    });
+
+    // Act
+    const result = await ExcelRateFetchConsumer.perform(mockJob);
+
+    // Assert
+    expect(namespace.run).toHaveBeenCalled();
+    expect(namespace.set).toHaveBeenCalledWith('requestId', 'req-123');
+    expect(ExcelRateService.processExcelRates).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      'rates.xlsx',
+      'user-123',
+      'req-123',
+      'job-123'
+    );
+    expect(mockJob.progress).toHaveBeenCalledWith(10);
+    expect(mockJob.progress).toHaveBeenCalledWith(100);
+    expect(result.success).toBe(true);
+  });
+});
+```
+
+### Testing with Mock Fixtures
+
+Create reusable fixtures in `service/__tests__/utils/`:
+
+```javascript
+// excel-rate-fixtures.js
+const EXCEL_FILES = {
+  VALID_SIMPLE: {
+    headers: ['origin_postal_code', 'destination_postal_code', 'weight'],
+    rows: [
+      { origin_postal_code: '10001', destination_postal_code: '90210', weight: 10 },
+    ],
+  },
+  INVALID_EXCEEDS_MAX_ROWS: {
+    headers: ['origin_postal_code', 'destination_postal_code', 'weight'],
+    rows: Array(11).fill(null).map(() => ({
+      origin_postal_code: '10001',
+      destination_postal_code: '90210',
+      weight: 10,
+    })),
+  },
+};
+
+const MOCK_EXCEL_JOBS = {
+  COMPLETED: {
+    id: 'job-uuid-1',
+    user_id: 'user-123',
+    job_id: 'bull-job-123',
+    original_filename: 'rates.xlsx',
+    status: 'completed',
+    row_count: 5,
+    success_count: 4,
+    error_count: 1,
+    output_s3_key: 's3/output/key',
+  },
+};
+
+module.exports = { EXCEL_FILES, MOCK_EXCEL_JOBS };
 ```
 
 ---

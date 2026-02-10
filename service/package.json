@@ -43,6 +43,7 @@
     "bull-arena": "^3.20.1",
     "cls-hooked": "^4.2.2",
     "cookie-parser": "^1.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.17.1",
     "express-rate-limit": "^7.1.5",
     "express-request-id": "^1.4.1",

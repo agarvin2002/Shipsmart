@@ -52,8 +52,10 @@ New carrier:      service/services/carriers/{carrier}-rate-service.js    (extend
 
 New worker:       service/workers/producers/{job}-producer.js
                   service/workers/consumers/{job}-consumer.js
+                  service/workers/validation/{job}-schema.js
 
 Tests:            service/__tests__/unit/{layer}/{name}.test.js
+Fixtures:         service/__tests__/utils/{feature}-fixtures.js
 ```
 
 **Module pattern**: All controllers, services, repositories export as singletons:
@@ -118,6 +120,10 @@ throw new NotFoundError('Rate not found');
 | Validator | `service/validators/validation-schema/carrier-credential-schema.js` |
 | Presenter | `service/presenters/carrier-credential-presenter.js` |
 | Route | `service/routes/carrier-credential-routes.js` |
+| File upload endpoint | `service/controller/excel-rate-controller.js` (Multer + async worker) |
+| Excel processing service | `service/services/excel-rate-service.js` (ExcelJS + S3) |
+| Worker producer | `service/workers/producers/excel-rate-fetch-producer.js` |
+| Worker consumer | `service/workers/consumers/excel-rate-fetch-consumer.js` |
 | Carrier service (OAuth) | `service/services/carriers/fedex-rate-service.js` |
 | Carrier service (Basic Auth) | `service/services/carriers/dhl-rate-service.js` |
 | Carrier proxy (OAuth) | `service/lib/carrier-proxies/fedex-proxy.js` |
@@ -125,6 +131,7 @@ throw new NotFoundError('Rate not found');
 | Request builder | `service/lib/request-builders/fedex-rate-request-builder.js` |
 | Base carrier | `service/services/carriers/base-carrier-rate-service.js` |
 | Unit test | `service/__tests__/unit/` (any file) |
+| Test fixtures | `service/__tests__/utils/excel-rate-fixtures.js` |
 
 ---
 
@@ -132,7 +139,7 @@ throw new NotFoundError('Rate not found');
 
 ```bash
 yarn lint                         # Must pass - ESLint (Airbnb base)
-cd service && yarn test           # Must pass - Jest 29.7 (608+ tests, 73%+ coverage)
+cd service && yarn test           # Must pass - Jest 29.7 (672+ tests, 73%+ coverage)
 cd service && yarn test:coverage  # Check coverage thresholds (50% branches, 60% functions/lines)
 yarn docker:up                    # Start PostgreSQL, Redis, S3Mock
 cd service && yarn db:migrate     # Run pending migrations

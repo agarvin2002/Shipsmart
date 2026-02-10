@@ -6,6 +6,7 @@ const addressRoutes = require('./address-routes');
 const carrierRoutes = require('./carrier-routes');
 const carrierCredentialRoutes = require('./carrier-credential-routes');
 const rateRoutes = require('./rate-routes');
+const excelRateRoutes = require('./excel-rate-routes');
 const logRoutes = require('./log-routes');
 const HealthController = require('../controller/health-controller');
 
@@ -18,6 +19,7 @@ router.use('/', addressRoutes);
 router.use('/', carrierRoutes);
 router.use('/', carrierCredentialRoutes);
 router.use('/', rateRoutes);
+router.use('/', excelRateRoutes);
 router.use('/', logRoutes);
 
 module.exports = router;

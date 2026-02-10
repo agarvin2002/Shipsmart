@@ -52,9 +52,26 @@ const jobStatusLimiter = rateLimit({
   keyGenerator: (req) => req.user?.userId?.toString() || req.ip,
 });
 
+// Rate limiter for Excel rate job creation - more restrictive than regular async
+const excelRateJobLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOWS.LOGIN,  // 15 minutes
+  max: 10,  // Max 10 Excel uploads per 15 minutes (more restrictive than async)
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT',
+      message: 'Too many Excel rate requests. Please try again later.'
+    }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.userId?.toString() || req.ip,
+});
+
 module.exports = {
   loginLimiter,
   registerLimiter,
   asyncJobLimiter,
   jobStatusLimiter,
+  excelRateJobLimiter,
 };

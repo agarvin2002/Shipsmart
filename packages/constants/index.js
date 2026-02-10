@@ -22,6 +22,7 @@ const {
   USER_STATUS,
   CREDENTIAL_STATUS,
   JOB_STATUS,
+  EXCEL_JOB_STATUS,
 } = require('./lib/status-values');
 const {
   COUNTRIES,
@@ -83,6 +84,7 @@ module.exports = {
   USER_STATUS,
   CREDENTIAL_STATUS,
   JOB_STATUS,
+  EXCEL_JOB_STATUS,
 
   // Location & Units
   COUNTRIES,
