@@ -386,6 +386,30 @@ See testing guidelines in [.claude/CLAUDE.md](.claude/CLAUDE.md)
 
 ---
 
+## AI Code Review with CodeRabbit
+
+All pull requests are automatically reviewed by [CodeRabbit](https://www.coderabbit.ai/), an AI code reviewer that understands our architecture patterns and security requirements.
+
+**What CodeRabbit Checks:**
+- **5-layer architecture compliance** - No layer skipping (controllers calling repositories directly)
+- **Multi-tenancy enforcement** - All repository queries filter by `user_id`
+- **Constants usage** - No hardcoded carriers, timeouts, or pagination values (must use `@shipsmart/constants`)
+- **Security issues** - Sensitive data logging, missing encryption, improper error handling
+- **Code quality** - Naming conventions, export patterns, context passing
+
+**Common Commands:**
+```markdown
+@coderabbitai summary     # Generate PR summary
+@coderabbitai review      # Trigger manual review
+@coderabbitai help        # Show available commands
+```
+
+**Configuration:** [.coderabbit.yaml](.coderabbit.yaml)
+
+See [docs/CODERABBIT.md](docs/CODERABBIT.md) for complete usage guide and best practices.
+
+---
+
 ## Production Deployment
 
 ### Architecture Overview

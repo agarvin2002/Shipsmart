@@ -1,0 +1,214 @@
+# CodeRabbit AI Code Review Configuration
+# ShipSmart AI API - Multi-carrier shipping rate comparison platform
+# See docs/CODERABBIT.md for usage guide
+
+language: "en-US"
+early_access: false
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+      - "feature/**"
+
+  # Path-based instructions for enforcing 5-layer architecture
+  path_instructions:
+    # Routes layer enforcement
+    - path: "service/routes/**/*.js"
+      instructions: |
+        Routes must ONLY define endpoints and apply middleware.
+        Check for:
+        - No business logic (should be in services)
+        - No database access (should be in repositories)
+        - Proper middleware usage: authenticate(), validate(), rate limiters
+        - Routes map to controller methods only
+
+        Reference: docs/DEVELOPMENT-HANDBOOK.md - 5-layer architecture
+
+    # Controllers layer enforcement
+    - path: "service/controller/**/*.js"
+      instructions: |
+        Controllers handle HTTP request/response cycle only.
+        CRITICAL CHECKS:
+        - NO direct repository calls (layer skipping violation - controllers must call services, never repositories)
+        - NO business logic (extract to service)
+        - Context object { currentUser: req.user, requestId: req.id } must be passed to services
+        - Must use ResponseFormatter.formatSuccess() for responses
+        - Errors delegated via next(error)
+        - MAX 50 lines per method (if longer, suggest refactor to service)
+        - Use presenters for data formatting
+
+        ANTI-PATTERN: Importing repositories in controllers
+        Example: const userRepository = require('../repositories/user-repository'); // WRONG
+
+        Reference: .claude/CLAUDE.md - Critical Rules #1
+
+    # Services layer enforcement
+    - path: "service/services/**/*.js"
+      instructions: |
+        Services contain ALL business logic.
+        Check for:
+        - Accept 'context' parameter { currentUser, requestId } in all public methods
+        - Private methods prefixed with underscore (_methodName)
+        - Use repository layer for database access (no direct Sequelize models)
+        - Singleton export pattern: module.exports = new ServiceClass();
+        - Use @shipsmart/constants for all hardcoded values (carriers, timeouts, pagination)
+        - Use @shipsmart/errors for error classes (ValidationError, NotFoundError, etc.)
+
+        CONSTANTS ENFORCEMENT:
+        - Hardcoded carriers like 'fedex', 'ups' should be CARRIERS.FEDEX, CARRIERS.UPS
+        - Hardcoded timeouts like 15000, 30000 should be TIMEOUTS.CARRIER_API_DEFAULT
+        - Hardcoded pagination like 50, 100 should be PAGINATION.DEFAULT_LIMIT
+
+        Reference: .claude/CLAUDE.md - Constants (MANDATORY)
+
+    # Repositories layer enforcement (CRITICAL for multi-tenancy)
+    - path: "service/repositories/**/*.js"
+      instructions: |
+        Repositories handle database access only.
+
+        ⚠️ CRITICAL SECURITY CHECK - MULTI-TENANCY:
+        ALL queries MUST filter by user_id or customer_id.
+        Flag any where clause without user_id as HIGH PRIORITY SECURITY ISSUE.
+
+        WRONG:
+        Model.findAll({ where: { id } })
+        Model.findOne({ where: { name } })
+
+        CORRECT:
+        Model.findAll({ where: { id, user_id } })
+        Model.findOne({ where: { name, user_id } })
+
+        Other checks:
+        - Use @shipsmart/constants for PAGINATION defaults (DEFAULT_LIMIT, MAX_LIMIT)
+        - Singleton export pattern: module.exports = new RepositoryClass();
+        - Accept 'context' parameter for logging/tracking
+
+        Reference: .claude/CLAUDE.md - Critical Rules #2
+
+    # Models layer enforcement
+    - path: "service/models/**/*.js"
+      instructions: |
+        Models define Sequelize schemas only.
+        Check for:
+        - snake_case field names (not camelCase) - e.g., user_id not userId
+        - UUID primary keys: id: DataTypes.UUID
+        - underscored: true in model options
+        - No business logic in models (move to services)
+
+        Example correct field: user_id: { type: DataTypes.UUID, allowNull: false }
+
+    # Validators enforcement
+    - path: "service/validators/validation-schema/**/*.js"
+      instructions: |
+        Validation schemas use Joi (@hapi/joi).
+        Check for:
+        - Use @shipsmart/constants for validation limits
+        - No hardcoded max/min values
+
+        Examples:
+        WRONG: Joi.number().max(150)
+        RIGHT: Joi.number().max(VALIDATION_LIMITS.MAX_WEIGHT_LB)
+
+        WRONG: Joi.string().max(100)
+        RIGHT: Joi.string().max(VALIDATION_LIMITS.MAX_NAME_LENGTH)
+
+    # Workers enforcement
+    - path: "service/workers/**/*.js"
+      instructions: |
+        Background job workers using Bull queues.
+        Check for:
+        - Producers create jobs with proper validation
+        - Consumers process jobs with error handling
+        - Jobs pass context { currentUser, requestId }
+        - Proper error handling (failed jobs should be retryable)
+
+    # Tests enforcement
+    - path: "service/__tests__/**/*.test.js"
+      instructions: |
+        Test files using Jest 29.7.
+        Check for:
+        - Descriptive test names (describe blocks and it statements)
+        - Proper mocking (no real external API calls to carriers)
+        - Test fixtures used from __tests__/utils/ directory
+        - No hardcoded test data (use fixtures)
+        - No console.log in tests (use proper assertions)
+
+  # Automatically generate conventional commit-style PR titles
+  auto_title:
+    enabled: true
+    style: "conventional"
+
+  # Code guidelines - point to existing documentation
+  code_guidelines:
+    - "docs/DEVELOPMENT-HANDBOOK.md"
+    - ".claude/CLAUDE.md"
+    - "README.md"
+
+# Tools configuration
+tools:
+  # Disable ESLint in CodeRabbit (we run it in CI already via GitHub Actions)
+  eslint:
+    enabled: false
+
+  # Enable security scanning
+  semgrep:
+    enabled: true
+
+  # Enable AST-based pattern matching for detecting architectural violations
+  ast-grep:
+    enabled: true
+
+# Chat configuration
+chat:
+  auto_reply: true
+
+# Ignore patterns - don't review these files
+ignore:
+  # Dependencies and generated files
+  - "node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/*.min.js"
+  - ".yarn/**"
+  - ".pnp.*"
+
+  # Lock files
+  - "yarn.lock"
+  - "package-lock.json"
+  - ".yarnrc.yml"
+
+  # Environment and config files (contain sensitive data)
+  - "config/*.json"
+  - ".env*"
+
+  # Infrastructure as code (reviewed separately)
+  - "terraform/**"
+  - "Dockerfile"
+  - "docker-compose.yml"
+  - "nginx/**"
+  - "Makefile"
+  - "pm2.sh"
+
+  # Test fixtures (data files, not logic)
+  - "service/__tests__/utils/**/*-fixtures.js"
+
+  # Documentation images and assets
+  - "**/*.png"
+  - "**/*.jpg"
+  - "**/*.svg"
+  - "**/*.gif"
+
+  # Postman collections (JSON data)
+  - "postman/**"
+
+  # Scripts (reviewed manually due to security implications)
+  - "scripts/**"

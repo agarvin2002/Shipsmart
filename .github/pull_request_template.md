@@ -3,6 +3,16 @@
 <!-- Clear, concise description of what this PR does -->
 
 
+## 🤖 CodeRabbit Review
+
+<!--
+CodeRabbit will automatically review this PR. Please address any comments it posts.
+You can interact with CodeRabbit by mentioning @coderabbitai in comments.
+Common commands: @coderabbitai summary, @coderabbitai review, @coderabbitai help
+See docs/CODERABBIT.md for full usage guide.
+-->
+
+
 ## 🏷️ Type
 
 - [ ] `feat` - New feature
