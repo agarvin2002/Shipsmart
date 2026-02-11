@@ -50,13 +50,14 @@ class RateService {
   }
 
   
-  async getRateHistory(queryParams) {
+  async getRateHistory(userId, queryParams) {
     try {
       const { origin_zip, destination_zip, carrier, days } = queryParams;
 
       const history = await this.rateHistoryRepository.findByRoute(
         origin_zip,
         destination_zip,
+        userId,
         {
           carrier,
           days: parseInt(days),

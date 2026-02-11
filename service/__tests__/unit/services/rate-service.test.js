@@ -339,12 +339,13 @@ describe('RateService Unit Tests', () => {
       mockRateHistoryRepo.findByRoute.mockResolvedValue(mockHistory);
 
       // Act
-      const result = await rateService.getRateHistory(queryParams);
+      const result = await rateService.getRateHistory(1, queryParams);
 
       // Assert
       expect(mockRateHistoryRepo.findByRoute).toHaveBeenCalledWith(
         '10001',
         '90210',
+        1,
         {
           carrier: 'fedex',
           days: 30  // Should be parsed to integer
@@ -366,12 +367,12 @@ describe('RateService Unit Tests', () => {
       mockRateHistoryRepo.findByRoute.mockResolvedValue([]);
 
       // Act
-      await rateService.getRateHistory(queryParams);
+      await rateService.getRateHistory(1, queryParams);
 
       // Assert
       const callArgs = mockRateHistoryRepo.findByRoute.mock.calls[0];
-      expect(callArgs[2].days).toBe(7);  // Should be integer, not string
-      expect(typeof callArgs[2].days).toBe('number');
+      expect(callArgs[3].days).toBe(7);  // Should be integer, not string
+      expect(typeof callArgs[3].days).toBe('number');
     });
 
     it('should handle history query without carrier filter', async () => {
@@ -386,12 +387,13 @@ describe('RateService Unit Tests', () => {
       mockRateHistoryRepo.findByRoute.mockResolvedValue([]);
 
       // Act
-      await rateService.getRateHistory(queryParams);
+      await rateService.getRateHistory(1, queryParams);
 
       // Assert
       expect(mockRateHistoryRepo.findByRoute).toHaveBeenCalledWith(
         '10001',
         '90210',
+        1,
         {
           carrier: undefined,
           days: 30
@@ -410,7 +412,7 @@ describe('RateService Unit Tests', () => {
       mockRateHistoryRepo.findByRoute.mockResolvedValue([]);
 
       // Act
-      const result = await rateService.getRateHistory(queryParams);
+      const result = await rateService.getRateHistory(1, queryParams);
 
       // Assert
       expect(result).toEqual([]);
@@ -429,7 +431,7 @@ describe('RateService Unit Tests', () => {
 
       // Act & Assert
       await expect(
-        rateService.getRateHistory(queryParams)
+        rateService.getRateHistory(1, queryParams)
       ).rejects.toThrow('Database query failed');
     });
   });

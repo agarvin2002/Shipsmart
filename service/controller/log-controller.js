@@ -30,17 +30,17 @@ class LogController {
 
       logger.info('[LogController] Getting shipment trace', {
         shipmentId,
-        userId: context.currentUser.id,
+        userId: context.currentUser.userId,
         requestId: context.requestId
       });
 
       const trace = await LogQueryService.getShipmentTrace(shipmentId, context);
 
       // Check if user has access to this shipment's logs (multi-tenancy)
-      if (trace.api_request && trace.api_request.user_id !== context.currentUser.id) {
+      if (trace.api_request && trace.api_request.user_id !== context.currentUser.userId) {
         logger.warn('[LogController] Unauthorized access attempt', {
           shipmentId,
-          requestingUserId: context.currentUser.id,
+          requestingUserId: context.currentUser.userId,
           actualUserId: trace.api_request.user_id
         });
 
@@ -84,7 +84,7 @@ class LogController {
   async getFailedRequests(req, res, next) {
     try {
       const { carrier, startDate, endDate, limit } = req.query;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       logger.info('[LogController] Getting failed requests', {
         userId,
@@ -139,7 +139,7 @@ class LogController {
         carrier,
         startDate,
         endDate,
-        userId: req.user.id,
+        userId: req.user.userId,
         requestId: req.id
       });
 
@@ -192,7 +192,7 @@ class LogController {
         limit
       } = req.query;
 
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       logger.info('[LogController] Searching logs', {
         userId,
@@ -253,7 +253,7 @@ class LogController {
   async getMyLogs(req, res, next) {
     try {
       const { limit, offset, startDate, endDate } = req.query;
-      const userId = req.user.id;
+      const userId = req.user.userId;
 
       logger.info('[LogController] Getting user logs', {
         userId,
@@ -287,7 +287,7 @@ class LogController {
 
     } catch (error) {
       logger.error('[LogController] Failed to get user logs', {
-        userId: req.user.id,
+        userId: req.user.userId,
         error: error.message,
         stack: error.stack
       });

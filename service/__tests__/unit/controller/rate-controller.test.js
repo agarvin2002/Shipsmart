@@ -331,7 +331,7 @@ describe('RateController', () => {
 
       expect(RateValidator).toHaveBeenCalledWith('getRateHistory');
       expect(mockValidator.validate).toHaveBeenCalledWith(req.query);
-      expect(mockRateService.getRateHistory).toHaveBeenCalledWith(mockValidator.value);
+      expect(mockRateService.getRateHistory).toHaveBeenCalledWith('user-123', mockValidator.value);
       expect(RatePresenter.presentHistory).toHaveBeenCalledWith(mockHistory);
       expect(res.status).toHaveBeenCalledWith(200);
     });

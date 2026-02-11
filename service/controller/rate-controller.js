@@ -101,7 +101,7 @@ class RateController {
 
       // Call service
       const rateService = new RateService();
-      const history = await rateService.getRateHistory(rateValidator.value);
+      const history = await rateService.getRateHistory(req.user.userId, rateValidator.value);
 
       // Present response
       logger.info(`Successfully fetched rate history for user: ${req.user.userId}`);

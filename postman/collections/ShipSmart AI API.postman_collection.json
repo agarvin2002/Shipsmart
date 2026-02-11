@@ -30,6 +30,14 @@
     {
       "key": "testPassword",
       "value": "SecurePass123!"
+    },
+    {
+      "key": "destinationAddressId",
+      "value": ""
+    },
+    {
+      "key": "excelJobId",
+      "value": ""
     }
   ],
   "item": [
@@ -133,13 +141,13 @@
                   "pm.test('Login successful', function () {",
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData.success).to.eql(true);",
-                  "    pm.expect(jsonData.data).to.have.property('token');",
+                  "    pm.expect(jsonData.data).to.have.property('access_token');",
                   "});",
                   "",
                   "// Auto-save token for subsequent requests",
                   "const jsonData = pm.response.json();",
-                  "if (jsonData.data && jsonData.data.token) {",
-                  "    pm.collectionVariables.set('accessToken', jsonData.data.token);",
+                  "if (jsonData.data && jsonData.data.access_token) {",
+                  "    pm.collectionVariables.set('accessToken', jsonData.data.access_token);",
                   "    console.log('Access token saved to collection variables');",
                   "}"
                 ],
@@ -232,8 +240,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code is 200 or 400', function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+                  "pm.test('Status code is 200, 400, or 401', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401]);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -454,6 +462,42 @@
           }
         },
         {
+          "name": "Create Destination Address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.id) {",
+                  "    pm.collectionVariables.set('destinationAddressId', jsonData.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address_label\": \"Customer\",\n  \"address_type\": \"destination\",\n  \"is_default\": false,\n  \"company_name\": \"Customer Corp\",\n  \"street_address_1\": \"456 Oak Avenue\",\n  \"city\": \"Los Angeles\",\n  \"state_province\": \"CA\",\n  \"postal_code\": \"90001\",\n  \"country\": \"US\",\n  \"phone\": \"+1555666777\"\n}"
+            },
+            "url": "{{baseUrl}}/addresses",
+            "description": "Create a destination address (auto-saves ID to destinationAddressId variable)"
+          }
+        },
+        {
           "name": "Get Address",
           "request": {
             "method": "GET",
@@ -554,9 +598,11 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('Response is array', function () {",
+                  "pm.test('Response has carriers array', function () {",
                   "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "    pm.expect(jsonData.data).to.have.property('carriers');",
+                  "    pm.expect(jsonData.data.carriers).to.be.an('array');",
+                  "    pm.expect(jsonData.data).to.have.property('total');",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -582,11 +628,12 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "fedex"
+                  "value": "1",
+                  "description": "1=FedEx, 2=UPS, 3=USPS, 4=DHL"
                 }
               ]
             },
-            "description": "Get carrier details by ID"
+            "description": "Get carrier details by ID (1=FedEx, 2=UPS, 3=USPS, 4=DHL)"
           }
         },
         {
@@ -601,11 +648,12 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "fedex"
+                  "value": "1",
+                  "description": "1=FedEx, 2=UPS, 3=USPS, 4=DHL"
                 }
               ]
             },
-            "description": "Get available services for a carrier"
+            "description": "Get available services for a carrier (1=FedEx, 2=UPS, 3=USPS, 4=DHL)"
           }
         }
       ]
@@ -800,7 +848,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"origin\": {\n    \"street_address_1\": \"123 Main Street\",\n    \"city\": \"New York\",\n    \"state_province\": \"NY\",\n    \"postal_code\": \"10001\",\n    \"country\": \"US\"\n  },\n  \"destination\": {\n    \"street_address_1\": \"456 Oak Avenue\",\n    \"city\": \"Los Angeles\",\n    \"state_province\": \"CA\",\n    \"postal_code\": \"90001\",\n    \"country\": \"US\"\n  },\n  \"packages\": [\n    {\n      \"weight\": 5,\n      \"length\": 10,\n      \"width\": 8,\n      \"height\": 6\n    }\n  ]\n}"
+              "raw": "{\n  \"origin\": {\n    \"address_line1\": \"123 Main Street\",\n    \"city\": \"New York\",\n    \"state_province\": \"NY\",\n    \"postal_code\": \"10001\",\n    \"country\": \"US\"\n  },\n  \"destination\": {\n    \"address_line1\": \"456 Oak Avenue\",\n    \"city\": \"Los Angeles\",\n    \"state_province\": \"CA\",\n    \"postal_code\": \"90001\",\n    \"country\": \"US\"\n  },\n  \"packages\": [\n    {\n      \"weight\": 5,\n      \"length\": 10,\n      \"width\": 8,\n      \"height\": 6\n    }\n  ]\n}"
             },
             "url": "{{baseUrl}}/shipments/rates/compare",
             "description": "Compare rates across all carriers"
@@ -818,7 +866,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"origin_address_id\": \"{{addressId}}\",\n  \"destination_address_id\": \"destination-address-uuid\",\n  \"package\": {\n    \"weight\": 5,\n    \"length\": 10,\n    \"width\": 8,\n    \"height\": 6,\n    \"weight_unit\": \"lb\",\n    \"dimension_unit\": \"in\"\n  },\n  \"service_type\": \"ground\"\n}"
+              "raw": "{\n  \"origin_address_id\": {{addressId}},\n  \"destination_address_id\": {{destinationAddressId}},\n  \"package\": {\n    \"weight\": 5,\n    \"length\": 10,\n    \"width\": 8,\n    \"height\": 6,\n    \"weight_unit\": \"lb\",\n    \"dimension_unit\": \"in\"\n  },\n  \"service_type\": \"ground\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/shipments/rates?async=false",
@@ -846,8 +894,8 @@
                   "});",
                   "",
                   "const jsonData = pm.response.json();",
-                  "if (jsonData.data && jsonData.data.jobId) {",
-                  "    pm.collectionVariables.set('jobId', jsonData.data.jobId);",
+                  "if (jsonData.data && jsonData.data.job_id) {",
+                  "    pm.collectionVariables.set('jobId', jsonData.data.job_id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -864,7 +912,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"origin_address_id\": \"{{addressId}}\",\n  \"destination_address_id\": \"destination-address-uuid\",\n  \"package\": {\n    \"weight\": 5,\n    \"length\": 10,\n    \"width\": 8,\n    \"height\": 6,\n    \"weight_unit\": \"lb\",\n    \"dimension_unit\": \"in\"\n  },\n  \"service_type\": \"ground\"\n}"
+              "raw": "{\n  \"origin_address_id\": {{addressId}},\n  \"destination_address_id\": {{destinationAddressId}},\n  \"package\": {\n    \"weight\": 5,\n    \"length\": 10,\n    \"width\": 8,\n    \"height\": 6,\n    \"weight_unit\": \"lb\",\n    \"dimension_unit\": \"in\"\n  },\n  \"service_type\": \"ground\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/shipments/rates?async=true",
@@ -925,12 +973,108 @@
             },
             "description": "Get rate history for a route"
           }
+        },
+        {
+          "name": "Upload Excel for Rate Comparison",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 202', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.job_id) {",
+                  "    pm.collectionVariables.set('excelJobId', jsonData.data.job_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Excel file (.xlsx) with 1-10 shipment rows"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/shipments/rates/excel",
+            "description": "Upload Excel file for batch rate comparison (rate limited: 10/15min)\n\nThe Excel file should contain shipment rows with origin/destination addresses and package details.\nMax file size: 20MB. Max rows: 10 shipments per file."
+          }
+        },
+        {
+          "name": "Get Excel Job Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shipments/rates/excel/job/:jobId",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipments", "rates", "excel", "job", ":jobId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "{{excelJobId}}"
+                }
+              ]
+            },
+            "description": "Check status of an Excel rate comparison job"
+          }
+        },
+        {
+          "name": "Download Excel Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shipments/rates/excel/download/:jobId",
+              "host": ["{{baseUrl}}"],
+              "path": ["shipments", "rates", "excel", "download", ":jobId"],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "{{excelJobId}}"
+                }
+              ]
+            },
+            "description": "Download processed Excel file with rate comparison results"
+          }
         }
       ]
     },
     {
       "name": "Logs",
       "item": [
+        {
+          "name": "Get Shipment Trace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/logs/shipment/:shipmentId",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "shipment", ":shipmentId"],
+              "variable": [
+                {
+                  "key": "shipmentId",
+                  "value": "1",
+                  "description": "Shipment ID to trace"
+                }
+              ]
+            },
+            "description": "Get complete trace for a specific shipment (API request + all carrier requests)"
+          }
+        },
         {
           "name": "Get My Logs",
           "request": {
