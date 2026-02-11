@@ -973,7 +973,13 @@
             },
             "description": "Get rate history for a route"
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Excel Rate Comparison",
+      "description": "Batch rate comparison via Excel upload. Upload a spreadsheet with multiple shipments, poll for completion, then download the results.\n\n**Output Excel has 2 sheets:**\n- **Sheet 1 - Rate Comparison Results:** One row per shipment with cheapest/fastest options (carrier, service, service_code, rate, currency, delivery_days, estimated_date) plus total_carriers, total_rates, and potential_savings.\n- **Sheet 2 - All Rates Detail:** Every individual rate from every carrier, linked to the shipment row via `shipment_row` column. Includes carrier, service_name, service_code, rate, currency, delivery_days, estimated_delivery_date.\n\n**Workflow:** Upload Excel → Poll Job Status → Download Results",
+      "item": [
         {
           "name": "Upload Excel for Rate Comparison",
           "event": [
@@ -985,9 +991,17 @@
                   "    pm.response.to.have.status(202);",
                   "});",
                   "",
+                  "pm.test('Response has job_id', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('job_id');",
+                  "});",
+                  "",
+                  "// Auto-save job ID for subsequent requests",
                   "const jsonData = pm.response.json();",
                   "if (jsonData.data && jsonData.data.job_id) {",
                   "    pm.collectionVariables.set('excelJobId', jsonData.data.job_id);",
+                  "    console.log('Excel job ID saved: ' + jsonData.data.job_id);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -1004,16 +1018,51 @@
                   "key": "file",
                   "type": "file",
                   "src": "",
-                  "description": "Excel file (.xlsx) with 1-10 shipment rows"
+                  "description": "Excel file (.xlsx or .xls) with 1-10 shipment rows"
                 }
               ]
             },
             "url": "{{baseUrl}}/shipments/rates/excel",
-            "description": "Upload Excel file for batch rate comparison (rate limited: 10/15min)\n\nThe Excel file should contain shipment rows with origin/destination addresses and package details.\nMax file size: 20MB. Max rows: 10 shipments per file."
+            "description": "Upload Excel file for batch rate comparison (rate limited: 10 uploads per 15 min).\n\n**Required columns:** origin_postal_code, destination_postal_code, weight\n\n**Optional columns:** weight_unit (default: lb), length, width, height, dimension_unit (default: in), origin_country (default: US), destination_country (default: US), description, declared_value\n\n**Limits:** Max file size 20MB, max 10 shipment rows per file, weight max 150 lbs.\n\nReturns a job_id (auto-saved to `excelJobId` variable) for polling status."
           }
         },
         {
           "name": "Get Excel Job Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has job state', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('state');",
+                  "    pm.expect(jsonData.data).to.have.property('progress');",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.state === 'completed') {",
+                  "    pm.test('Completed job has download URL', function () {",
+                  "        pm.expect(jsonData.data.data).to.have.property('download_url');",
+                  "        pm.expect(jsonData.data.data).to.have.property('row_count');",
+                  "        pm.expect(jsonData.data.data).to.have.property('success_count');",
+                  "        pm.expect(jsonData.data.data).to.have.property('error_count');",
+                  "    });",
+                  "",
+                  "    if (jsonData.data.data && jsonData.data.data.download_url) {",
+                  "        pm.collectionVariables.set('excelDownloadUrl', jsonData.data.data.download_url);",
+                  "        console.log('Download URL saved to excelDownloadUrl');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -1028,11 +1077,24 @@
                 }
               ]
             },
-            "description": "Check status of an Excel rate comparison job"
+            "description": "Poll the status of an Excel rate comparison job.\n\n**States:** waiting → active → completed | failed\n\nWhen completed, the response includes row_count, success_count, error_count, download_url, and download_expires_in.\n\nThe download_url is auto-saved to `excelDownloadUrl` variable on completion."
           }
         },
         {
           "name": "Download Excel Results",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 302 (redirect to S3)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -1047,7 +1109,7 @@
                 }
               ]
             },
-            "description": "Download processed Excel file with rate comparison results"
+            "description": "Download the processed Excel results file. Redirects to a signed S3 URL.\n\n**Output Excel contains 2 sheets:**\n\n**Sheet 1 - Rate Comparison Results (Summary):**\nOne row per shipment with input columns preserved, plus: status, cheapest_carrier, cheapest_service, cheapest_service_code, cheapest_rate, cheapest_currency, cheapest_delivery_days, cheapest_estimated_date, fastest_carrier, fastest_service, fastest_service_code, fastest_rate, fastest_currency, fastest_delivery_days, fastest_estimated_date, total_carriers, total_rates, potential_savings, error_message.\n\n**Sheet 2 - All Rates Detail:**\nOne row per individual rate across all carriers/services: shipment_row (links to Sheet 1), carrier, service_name, service_code, rate, currency, delivery_days, estimated_delivery_date.\n\n**Tip:** Use the download_url from Get Excel Job Status response, or use this endpoint which redirects automatically."
           }
         }
       ]

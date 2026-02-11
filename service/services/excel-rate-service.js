@@ -4,7 +4,7 @@ const { s3Wrapper, S3KeyGenerator } = require('@shipsmart/s3');
 const CarrierRateOrchestrator = require('./carriers/carrier-rate-orchestrator');
 const ExcelRateJobRepository = require('../repositories/excel-rate-job-repository');
 const { ValidationError, NotFoundError } = require('@shipsmart/errors');
-const { VALIDATION_LIMITS, EXCEL_JOB_STATUS, TIMEOUTS, WorkerJobs } = require('@shipsmart/constants');
+const { VALIDATION_LIMITS, EXCEL_JOB_STATUS, TIMEOUTS, WorkerJobs, CURRENCY_DEFAULTS } = require('@shipsmart/constants');
 const workerClient = require('../worker-client');
 
 class ExcelRateService {
@@ -231,13 +231,22 @@ class ExcelRateService {
             status: 'success',
             cheapest_carrier: rateComparison.cheapest?.carrier || null,
             cheapest_service: rateComparison.cheapest?.service_name || null,
+            cheapest_service_code: rateComparison.cheapest?.service_code || null,
             cheapest_rate: rateComparison.cheapest?.rate_amount || null,
-            cheapest_currency: rateComparison.cheapest?.currency || 'USD',
+            cheapest_currency: rateComparison.cheapest?.currency || CURRENCY_DEFAULTS.DEFAULT,
+            cheapest_delivery_days: rateComparison.cheapest?.delivery_days || null,
+            cheapest_estimated_date: rateComparison.cheapest?.estimated_delivery_date || null,
             fastest_carrier: rateComparison.fastest?.carrier || null,
             fastest_service: rateComparison.fastest?.service_name || null,
+            fastest_service_code: rateComparison.fastest?.service_code || null,
+            fastest_rate: rateComparison.fastest?.rate_amount || null,
+            fastest_currency: rateComparison.fastest?.currency || CURRENCY_DEFAULTS.DEFAULT,
             fastest_delivery_days: rateComparison.fastest?.delivery_days || null,
+            fastest_estimated_date: rateComparison.fastest?.estimated_delivery_date || null,
             total_carriers: rateComparison.total_carriers || 0,
             total_rates: rateComparison.total_rates || 0,
+            potential_savings: rateComparison.potential_savings || 0,
+            all_rates: rateComparison.all_rates || [],
             error_message: null,
           });
 
@@ -249,13 +258,22 @@ class ExcelRateService {
             status: 'error',
             cheapest_carrier: null,
             cheapest_service: null,
+            cheapest_service_code: null,
             cheapest_rate: null,
-            cheapest_currency: 'USD',
+            cheapest_currency: CURRENCY_DEFAULTS.DEFAULT,
+            cheapest_delivery_days: null,
+            cheapest_estimated_date: null,
             fastest_carrier: null,
             fastest_service: null,
+            fastest_service_code: null,
+            fastest_rate: null,
+            fastest_currency: CURRENCY_DEFAULTS.DEFAULT,
             fastest_delivery_days: null,
+            fastest_estimated_date: null,
             total_carriers: 0,
             total_rates: 0,
+            potential_savings: 0,
+            all_rates: [],
             error_message: error.message,
           });
 
@@ -323,6 +341,8 @@ class ExcelRateService {
    */
   async _generateOutputExcel(inputHeaders, results) {
     const workbook = new ExcelJS.Workbook();
+
+    // --- Sheet 1: Rate Comparison Results (Summary) ---
     const worksheet = workbook.addWorksheet('Rate Comparison Results');
 
     // Define output columns (input + output)
@@ -331,13 +351,21 @@ class ExcelRateService {
       'status',
       'cheapest_carrier',
       'cheapest_service',
+      'cheapest_service_code',
       'cheapest_rate',
       'cheapest_currency',
+      'cheapest_delivery_days',
+      'cheapest_estimated_date',
       'fastest_carrier',
       'fastest_service',
+      'fastest_service_code',
+      'fastest_rate',
+      'fastest_currency',
       'fastest_delivery_days',
+      'fastest_estimated_date',
       'total_carriers',
       'total_rates',
+      'potential_savings',
       'error_message',
     ];
 
@@ -353,7 +381,7 @@ class ExcelRateService {
 
     // Add data rows
     results.forEach((result) => {
-      const rowData = outputHeaders.map(header => result[header] || null);
+      const rowData = outputHeaders.map(header => result[header] ?? null);
       const dataRow = worksheet.addRow(rowData);
 
       // Style based on status
@@ -379,8 +407,69 @@ class ExcelRateService {
       }
     });
 
-    // Auto-width columns
+    // Auto-width summary columns
     worksheet.columns.forEach((column) => {
+      let maxLength = 10;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const cellLength = cell.value ? String(cell.value).length : 0;
+        maxLength = Math.max(maxLength, cellLength);
+      });
+      column.width = Math.min(maxLength + 2, 50);
+    });
+
+    // --- Sheet 2: All Rates Detail ---
+    const detailSheet = workbook.addWorksheet('All Rates Detail');
+
+    const detailHeaders = [
+      'shipment_row',
+      'carrier',
+      'service_name',
+      'service_code',
+      'rate',
+      'currency',
+      'delivery_days',
+      'estimated_delivery_date',
+    ];
+
+    // Add detail header row with styling
+    const detailHeaderRow = detailSheet.addRow(detailHeaders);
+    detailHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    detailHeaderRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF2F5496' },
+    };
+    detailHeaderRow.height = 20;
+
+    // Add detail data rows
+    results.forEach((result, index) => {
+      const shipmentRow = index + 2; // +2 for 1-based + header row
+
+      if (result.all_rates && result.all_rates.length > 0) {
+        result.all_rates.forEach((rate) => {
+          const detailRowData = [
+            shipmentRow,
+            rate.carrier,
+            rate.service_name,
+            rate.service_code,
+            rate.rate_amount,
+            rate.currency || CURRENCY_DEFAULTS.DEFAULT,
+            rate.delivery_days,
+            rate.estimated_delivery_date,
+          ];
+
+          const detailDataRow = detailSheet.addRow(detailRowData);
+          detailDataRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFD6E4F0' },
+          };
+        });
+      }
+    });
+
+    // Auto-width detail columns
+    detailSheet.columns.forEach((column) => {
       let maxLength = 10;
       column.eachCell({ includeEmpty: true }, (cell) => {
         const cellLength = cell.value ? String(cell.value).length : 0;

@@ -608,6 +608,189 @@ describe('ExcelRateService', () => {
     });
   });
 
+  describe('#_generateOutputExcel', () => {
+    let mockDetailWorksheet;
+
+    beforeEach(() => {
+      // Setup detail worksheet mock separately
+      mockDetailWorksheet = {
+        addRow: jest.fn(() => ({
+          font: {},
+          fill: {},
+          height: 0,
+          getCell: jest.fn(() => ({ font: {} })),
+        })),
+        columns: [],
+      };
+
+      // Return different worksheet objects based on name
+      mockWorkbook.addWorksheet = jest.fn((name) => {
+        if (name === 'All Rates Detail') return mockDetailWorksheet;
+        return mockWorksheet;
+      });
+    });
+
+    it('should create two worksheets - summary and detail', async () => {
+      const results = [{
+        origin_postal_code: '10001',
+        destination_postal_code: '90210',
+        weight: 10,
+        status: 'success',
+        cheapest_carrier: 'fedex',
+        cheapest_service: 'FedEx Ground',
+        cheapest_service_code: 'FEDEX_GROUND',
+        cheapest_rate: 15.50,
+        cheapest_currency: 'USD',
+        cheapest_delivery_days: 3,
+        cheapest_estimated_date: '2024-03-15',
+        fastest_carrier: 'fedex',
+        fastest_service: 'FedEx 2Day',
+        fastest_service_code: 'FEDEX_2_DAY',
+        fastest_rate: 35.00,
+        fastest_currency: 'USD',
+        fastest_delivery_days: 2,
+        fastest_estimated_date: '2024-03-14',
+        total_carriers: 4,
+        total_rates: 8,
+        potential_savings: 29.50,
+        all_rates: MOCK_RATE_COMPARISONS.SUCCESS.all_rates,
+        error_message: null,
+      }];
+
+      await service._generateOutputExcel(
+        ['origin_postal_code', 'destination_postal_code', 'weight'],
+        results
+      );
+
+      expect(mockWorkbook.addWorksheet).toHaveBeenCalledTimes(2);
+      expect(mockWorkbook.addWorksheet).toHaveBeenCalledWith('Rate Comparison Results');
+      expect(mockWorkbook.addWorksheet).toHaveBeenCalledWith('All Rates Detail');
+    });
+
+    it('should include all enhanced summary headers', async () => {
+      const results = [{
+        status: 'success',
+        all_rates: [],
+        error_message: null,
+      }];
+
+      await service._generateOutputExcel([], results);
+
+      // First addRow call on summary sheet is the header row
+      const headerCall = mockWorksheet.addRow.mock.calls[0][0];
+      expect(headerCall).toContain('cheapest_service_code');
+      expect(headerCall).toContain('cheapest_delivery_days');
+      expect(headerCall).toContain('cheapest_estimated_date');
+      expect(headerCall).toContain('fastest_service_code');
+      expect(headerCall).toContain('fastest_rate');
+      expect(headerCall).toContain('fastest_currency');
+      expect(headerCall).toContain('fastest_estimated_date');
+      expect(headerCall).toContain('potential_savings');
+    });
+
+    it('should add one detail row per rate in all_rates', async () => {
+      const allRates = MOCK_RATE_COMPARISONS.SUCCESS.all_rates;
+      const results = [{
+        status: 'success',
+        all_rates: allRates,
+        error_message: null,
+      }];
+
+      await service._generateOutputExcel([], results);
+
+      // Detail sheet: 1 header row + N rate rows
+      expect(mockDetailWorksheet.addRow).toHaveBeenCalledTimes(allRates.length + 1);
+    });
+
+    it('should include correct detail headers', async () => {
+      const results = [{
+        status: 'success',
+        all_rates: MOCK_RATE_COMPARISONS.SUCCESS.all_rates,
+        error_message: null,
+      }];
+
+      await service._generateOutputExcel([], results);
+
+      const detailHeaderCall = mockDetailWorksheet.addRow.mock.calls[0][0];
+      expect(detailHeaderCall).toEqual([
+        'shipment_row',
+        'carrier',
+        'service_name',
+        'service_code',
+        'rate',
+        'currency',
+        'delivery_days',
+        'estimated_delivery_date',
+      ]);
+    });
+
+    it('should map detail row data correctly with shipment_row reference', async () => {
+      const allRates = MOCK_RATE_COMPARISONS.SUCCESS.all_rates;
+      const results = [{
+        status: 'success',
+        all_rates: allRates,
+        error_message: null,
+      }];
+
+      await service._generateOutputExcel([], results);
+
+      // First data row (index 1 since index 0 is header)
+      const firstDataRow = mockDetailWorksheet.addRow.mock.calls[1][0];
+      expect(firstDataRow).toEqual([
+        2, // shipment_row (index 0 + 2)
+        allRates[0].carrier,
+        allRates[0].service_name,
+        allRates[0].service_code,
+        allRates[0].rate_amount,
+        allRates[0].currency,
+        allRates[0].delivery_days,
+        allRates[0].estimated_delivery_date,
+      ]);
+    });
+
+    it('should not add detail rows for error results', async () => {
+      const results = [{
+        status: 'error',
+        all_rates: [],
+        error_message: 'No carriers found',
+      }];
+
+      await service._generateOutputExcel([], results);
+
+      // Only header row on detail sheet
+      expect(mockDetailWorksheet.addRow).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle multiple shipments with different rate counts', async () => {
+      const results = [
+        {
+          status: 'success',
+          all_rates: MOCK_RATE_COMPARISONS.SUCCESS.all_rates, // 4 rates
+          error_message: null,
+        },
+        {
+          status: 'error',
+          all_rates: [],
+          error_message: 'Failed',
+        },
+        {
+          status: 'success',
+          all_rates: MOCK_RATE_COMPARISONS.SUCCESS_UPS.all_rates, // 4 rates
+          error_message: null,
+        },
+      ];
+
+      await service._generateOutputExcel([], results);
+
+      // Detail sheet: 1 header + 4 rates (shipment 1) + 0 (error) + 4 rates (shipment 3) = 9
+      expect(mockDetailWorksheet.addRow).toHaveBeenCalledTimes(9);
+
+      // Verify shipment_row references: shipment 1 = row 2, shipment 3 = row 4
+      const thirdShipmentFirstRate = mockDetailWorksheet.addRow.mock.calls[5][0];
+      expect(thirdShipmentFirstRate[0]).toBe(4); // row 4 (index 2 + 2)
+    });
+  });
+
   describe('#getDownloadUrlByJobId', () => {
     it('should return download URL for completed job', async () => {
       service.excelRateJobRepository.findByJobId = jest.fn().mockResolvedValue(MOCK_EXCEL_JOBS.COMPLETED);
