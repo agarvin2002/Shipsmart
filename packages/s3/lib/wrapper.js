@@ -8,7 +8,6 @@ const { S3Error } = require('@shipsmart/errors');
  * S3Wrapper - Singleton AWS S3 client wrapper
  *
  * Provides promisified S3 operations with consistent error handling
- * Based on doc-gen-service-berlin_base_branch architecture
  *
  * Note: Uses global.logger which is wrapped by logger-initializer
  * to automatically inject request IDs from CLS namespace

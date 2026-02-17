@@ -2,7 +2,6 @@
  * Test Helpers
  *
  * Factory functions for creating mock objects used in tests.
- * Based on pack-courier-frontline-service patterns adapted for Jest.
  */
 
 const { v4: uuidv4 } = require('uuid');

@@ -4,7 +4,6 @@ const { v4: uuidv4 } = require('uuid');
  * S3 Key Generator
  *
  * Utilities for generating S3 keys with consistent patterns
- * Based on doc-gen-service-berlin_base_branch architecture
  */
 
 class S3KeyGenerator {

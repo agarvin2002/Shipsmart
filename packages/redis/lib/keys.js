@@ -2,7 +2,6 @@
  * Redis Key Constants
  *
  * Centralized Redis key definitions using sprintf format
- * Based on pack-courier-frontline-service architecture
  *
  * Key Format: PREFIX:%(placeholder)s
  * Example: CHECK_DATA:%(checkId)s -> CHECK_DATA:123

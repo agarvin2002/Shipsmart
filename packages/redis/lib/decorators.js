@@ -5,7 +5,6 @@ const RedisWrapper = require('./wrapper');
  * Cache Decorators
  *
  * Utility decorators for automatic caching of method results
- * Based on pack-courier-frontline-service patterns
  */
 
 /**

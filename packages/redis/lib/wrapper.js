@@ -10,8 +10,6 @@ const MULTI_DELETE = 'del';
 /**
  * RedisWrapper - Utility class for Redis operations
  * Provides promisified methods and common Redis patterns
- *
- * Based on pack-courier-frontline-service architecture
  */
 class RedisWrapper {
   /**

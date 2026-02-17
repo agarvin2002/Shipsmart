@@ -1952,7 +1952,7 @@ await service.operation(data, context);
 
 ### Overview
 
-The ShipSmart AI API uses a **single-container production deployment architecture** that mirrors the marauders-map reference project. This design consolidates Nginx, Node.js, and PM2 into a single Docker container for simplified deployment and management.
+The ShipSmart AI API uses a **single-container production deployment architecture** that consolidates Nginx, Node.js, and PM2 into a single Docker container for simplified deployment and management.
 
 ### Architecture Pattern
 
@@ -1997,7 +1997,7 @@ The ShipSmart AI API uses a **single-container production deployment architectur
 
 #### Why Single Container?
 
-**Based on marauders-map production architecture:**
+**Design rationale:**
 - ✅ Simplified deployment (one container to manage)
 - ✅ Reduced orchestration complexity
 - ✅ Lower resource overhead
@@ -2057,10 +2057,8 @@ RUN if [ -f nginx/nginx.${NODE_ENV}.conf ]; then \
 **Pattern:** Direct PM2 start commands (NOT ecosystem config file)
 
 **Why No pm2.ecosystem.config.js?**
-- marauders-map uses direct `pm2 start` commands
-- Simpler for this use case
+- Direct `pm2 start` commands are simpler for this use case
 - Easier to debug and modify
-- Matches reference architecture exactly
 
 **Startup Flow:**
 ```bash
