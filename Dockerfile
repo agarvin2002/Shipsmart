@@ -9,7 +9,8 @@ RUN apk add --no-cache \
     npm \
     bash \
     curl \
-    postgresql-client
+    postgresql-client \
+    aws-cli
 
 # Install Corepack and enable Yarn 3.6.1 (specified in package.json)
 RUN npm install -g corepack && \
@@ -32,9 +33,9 @@ COPY . /root/shipsmart-ai-api
 # Make PM2 script executable
 RUN chmod +x pm2*.sh || true
 
-# Build arguments (will be set by Jenkins or locally)
-ARG NODE_ENV=production
-ENV NODE_ENV=$NODE_ENV
+# NODE_ENV defaults to production at build time (optimizes yarn install).
+# At runtime, ECS overrides this with the actual environment (staging, demo, etc.)
+ENV NODE_ENV=production
 
 # Remove existing yarn.lock and install dependencies
 RUN rm -rf yarn.lock
@@ -46,14 +47,8 @@ RUN yarn rebuild bcrypt msgpackr-extract
 # Run database migrations
 RUN cd service && yarn db:migrate || echo "Migrations will run on startup"
 
-# Copy Nginx configuration based on environment
-# Note: Config files should be pulled from S3 before Docker build (in Jenkins)
-# For local development, we'll use a default config
-RUN if [ -f nginx/nginx.${NODE_ENV}.conf ]; then \
-      cp nginx/nginx.${NODE_ENV}.conf /etc/nginx/nginx.conf; \
-    else \
-      echo "Nginx config for ${NODE_ENV} not found, using default"; \
-    fi
+# Nginx config is selected at container startup in pm2.sh based on runtime NODE_ENV.
+# All nginx config files are included in the image for all environments.
 
 # Create logs directory
 RUN mkdir -p ./logs

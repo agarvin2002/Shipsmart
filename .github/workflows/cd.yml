@@ -1,5 +1,12 @@
 name: CD - Deploy to ECS
 
+# Deploys a previously built Docker image (from ECR) to the target ECS environment.
+# Trigger manually from GitHub Actions UI with the image tag from the CI workflow.
+#
+# Usage:
+#   1. Run the CI workflow to build and get an image tag (e.g., develop-a3f9c2b)
+#   2. Run this workflow with that image_tag and the target environment
+
 on:
   workflow_dispatch:
     inputs:
@@ -8,15 +15,14 @@ on:
         required: true
         type: choice
         options:
-          - development
           - staging
+          - demo
           - production
-        default: 'development'
+        default: 'staging'
       image_tag:
-        description: 'Docker image tag to deploy'
+        description: 'Docker image tag to deploy (e.g., develop-a3f9c2b)'
         required: true
         type: string
-        default: 'main'
   workflow_call:
     inputs:
       environment:
@@ -29,7 +35,7 @@ on:
         type: string
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-south-1
   ECR_REPOSITORY: shipsmart-api
 
 concurrency:
@@ -56,10 +62,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
       - name: Verify image exists in ECR
         run: |
           echo "Verifying image exists in ECR..."
@@ -68,7 +70,7 @@ jobs:
             --image-ids imageTag=${{ inputs.image_tag }} \
             --region ${{ env.AWS_REGION }} || {
               echo "❌ Error: Image tag '${{ inputs.image_tag }}' not found in ECR"
-              echo "Please run CI workflow first to build and push the image"
+              echo "Please run the CI workflow first to build and push the image"
               exit 1
             }
           echo "✅ Image verified in ECR"
@@ -77,76 +79,31 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Run deployment script
-        id: deploy
         run: |
           echo "Running deployment script..."
           chmod +x scripts/deploy.sh
           bash scripts/deploy.sh ${{ inputs.environment }} ${{ inputs.image_tag }}
-
-      - name: Wait for ECS service to stabilize
-        run: |
-          echo "Waiting for ECS service to stabilize..."
-
-          if [ "${{ inputs.environment }}" == "development" ]; then
-            CLUSTER="shipsmart-dev-cluster"
-            SERVICE="shipsmart-dev-service"
-          elif [ "${{ inputs.environment }}" == "staging" ]; then
-            CLUSTER="shipsmart-staging-cluster"
-            SERVICE="shipsmart-staging-service"
-          elif [ "${{ inputs.environment }}" == "production" ]; then
-            CLUSTER="shipsmart-prod-cluster"
-            SERVICE="shipsmart-prod-service"
-          fi
-
-          aws ecs wait services-stable \
-            --cluster $CLUSTER \
-            --services $SERVICE \
-            --region ${{ env.AWS_REGION }} || {
-              echo "❌ Error: ECS service failed to stabilize within timeout"
-              exit 1
-            }
-
-          echo "✅ ECS service stabilized successfully"
 
       - name: Get deployment URL
         id: deployment-url
         run: |
           if [ "${{ inputs.environment }}" == "production" ]; then
             echo "url=https://api.shipsmart.com" >> $GITHUB_OUTPUT
-          elif [ "${{ inputs.environment }}" == "staging" ]; then
-            echo "url=https://staging-api.shipsmart.com" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.environment }}" == "demo" ]; then
+            echo "url=https://demo-api.shipsmart.com" >> $GITHUB_OUTPUT
           else
-            echo "url=https://dev-api.shipsmart.com" >> $GITHUB_OUTPUT
+            echo "url=https://staging-api.shipsmart.com" >> $GITHUB_OUTPUT
           fi
 
       - name: Deployment Summary
         run: |
-          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Image Tag**: ${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**ECR Repository**: ${{ env.ECR_REPOSITORY }}" >> $GITHUB_STEP_SUMMARY
-          echo "**AWS Region**: ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: \`${{ inputs.environment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag**: \`${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**ECR Repository**: \`${{ env.ECR_REPOSITORY }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**AWS Region**: \`${{ env.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment URL**: ${{ steps.deployment-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL**: ${{ steps.deployment-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
-
-      - name: Post deployment comment to PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const comment = `### 🚀 Deployment to \`${{ inputs.environment }}\` completed!
-
-            **Image**: \`${{ inputs.image_tag }}\`
-            **URL**: ${{ steps.deployment-url.outputs.url }}
-
-            ✅ Deployment successful!`;
-
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: comment
-            });

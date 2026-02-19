@@ -2,10 +2,38 @@
 
 ulimit -S -c 0
 
-#nginx conf (Alpine Linux)
+# =============================================================================
+# Step 1: Pull environment-specific config from S3
+# Skipped for development/test (those use local config files)
+# =============================================================================
+if [ -n "$NODE_ENV" ] && [ "$NODE_ENV" != "development" ] && [ "$NODE_ENV" != "test" ]; then
+  echo "=== Pulling config.${NODE_ENV}.json from S3 ==="
+  aws s3 cp s3://shipsmart-config/config.${NODE_ENV}.json \
+    /root/shipsmart-ai-api/config/config.${NODE_ENV}.json \
+    --region ${AWS_REGION:-ap-south-1} \
+    && echo "Config pulled successfully for ${NODE_ENV}" \
+    || echo "Warning: Could not pull config from S3, using existing config"
+fi
+
+# =============================================================================
+# Step 2: Copy nginx config for this environment
+# =============================================================================
+if [ -f "/root/shipsmart-ai-api/nginx/nginx.${NODE_ENV}.conf" ]; then
+  cp /root/shipsmart-ai-api/nginx/nginx.${NODE_ENV}.conf /etc/nginx/nginx.conf
+  echo "Nginx config loaded for ${NODE_ENV}"
+elif [ -f "/root/shipsmart-ai-api/nginx/nginx.production.conf" ]; then
+  cp /root/shipsmart-ai-api/nginx/nginx.production.conf /etc/nginx/nginx.conf
+  echo "Warning: No nginx config for ${NODE_ENV}, using production default"
+fi
+
+# =============================================================================
+# Step 3: Start Nginx
+# =============================================================================
 nginx
 
-#Restart PM2
+# =============================================================================
+# Step 4: Start application processes via PM2
+# =============================================================================
 cd /root/shipsmart-ai-api/
 
 # Ensure logs directory exists

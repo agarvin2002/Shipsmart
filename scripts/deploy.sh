@@ -17,7 +17,7 @@ if [ -z "$ENVIRONMENT" ] || [ -z "$IMAGE_TAG" ]; then
 fi
 
 # AWS Configuration
-AWS_REGION="us-east-1"
+AWS_REGION="ap-south-1"
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-YOUR_AWS_ACCOUNT_ID}"
 ECR_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/shipsmart-api:${IMAGE_TAG}"
 
