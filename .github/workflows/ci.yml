@@ -1,58 +1,39 @@
 name: CI - Build and Push to ECR
 
+# Builds a Docker image from the specified branch and pushes it to ECR.
+# The image is environment-agnostic — config and secrets are injected at runtime by ECS.
+#
+# Image tag format: {branch-slug}-{short-sha}  e.g., develop-a3f9c2b
+# To deploy the built image, run the CD workflow with that tag.
+
 on:
-  push:
-    branches:
-      - main
-      - develop
-      - 'feature/**'
-  pull_request:
-    branches:
-      - main
-      - develop
   workflow_dispatch:
     inputs:
-      node_env:
-        description: 'Environment for build'
+      branch:
+        description: 'Branch to build from'
         required: true
-        type: choice
-        options:
-          - development
-          - staging
-          - production
-        default: 'development'
-  workflow_call:
-    inputs:
-      node_env:
-        description: 'Environment for build'
-        required: false
         type: string
-        default: 'development'
-    outputs:
-      image_tag:
-        description: 'Docker image tag pushed to ECR'
-        value: ${{ jobs.build-push.outputs.image_tag }}
-      image_uri:
-        description: 'Full ECR image URI'
-        value: ${{ jobs.build-push.outputs.image_uri }}
+        default: 'develop'
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-south-1
   ECR_REPOSITORY: shipsmart-api
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: build-${{ inputs.branch }}
   cancel-in-progress: true
 
 jobs:
-  build-test:
-    name: Build and Test
+  test:
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -65,63 +46,29 @@ jobs:
           corepack prepare yarn@3.6.1 --activate
           yarn --version
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Pull configuration from S3
-        run: |
-          echo "Pulling configuration files from S3..."
-          aws s3 cp s3://shipsmart-config/ config/ --recursive
-          ls -la config/
-
       - name: Install dependencies
-        run: |
-          echo "Running make dev-clean-install..."
-          make dev-clean-install
+        run: make dev-clean-install
 
       - name: Run linting
-        run: |
-          echo "Running ESLint..."
-          yarn lint
-        continue-on-error: true
+        run: yarn lint
 
       - name: Run tests
-        run: |
-          echo "Running tests..."
-          cd service && yarn test
-        continue-on-error: true
+        run: cd service && yarn test
 
   build-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    needs: build-test
+    needs: test
     timeout-minutes: 30
     outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
       image_uri: ${{ steps.push.outputs.image_uri }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Determine NODE_ENV
-        id: env
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "node_env=${{ inputs.node_env }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "workflow_call" ]; then
-            echo "node_env=${{ inputs.node_env }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "node_env=production" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
-            echo "node_env=staging" >> $GITHUB_OUTPUT
-          else
-            echo "node_env=development" >> $GITHUB_OUTPUT
-          fi
+        with:
+          ref: ${{ inputs.branch }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -137,23 +84,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Extract branch name
-        id: branch
-        run: |
-          BRANCH_NAME=${GITHUB_REF#refs/heads/}
-          BRANCH_NAME=${BRANCH_NAME//\//-}
-          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-
-      - name: Generate Docker metadata
+      - name: Generate image tag
         id: meta
         run: |
-          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG="${{ steps.branch.outputs.name }}"
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          BRANCH="${{ inputs.branch }}"
 
-          echo "tags=$IMAGE_TAG,$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          # Sanitize branch name for use as Docker tag (replace non-alphanumeric with -)
+          BRANCH_SLUG=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9]/-/g' | tr '[:upper:]' '[:lower:]')
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_TAG="${BRANCH_SLUG}-${SHORT_SHA}"
+
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "Building image with tag: ${IMAGE_TAG}"
 
       - name: Build Docker image
         uses: docker/build-push-action@v5
@@ -162,51 +104,32 @@ jobs:
           file: ./Dockerfile
           push: false
           load: true
-          build-args: |
-            NODE_ENV=${{ steps.env.outputs.node_env }}
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.image_tag }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.short_sha }}
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Tag latest for main branch
-        if: github.ref == 'refs/heads/main'
-        run: |
-          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          docker tag $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.image_tag }} \
-            $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
-
-      - name: Push Docker images to ECR
+      - name: Push Docker image to ECR
         id: push
         run: |
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG=${{ steps.meta.outputs.image_tag }}
-          SHORT_SHA=${{ steps.meta.outputs.short_sha }}
 
-          echo "Pushing images to ECR..."
           docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
-          docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$SHORT_SHA
-
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:latest
-          fi
 
           IMAGE_URI="$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
           echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
-          echo "✅ Successfully pushed: $IMAGE_URI"
+          echo "Successfully pushed: $IMAGE_URI"
 
-      - name: Summary
+      - name: Build Summary
         run: |
-          echo "### 🚀 Docker Image Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment**: ${{ steps.env.outputs.node_env }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch**: ${{ steps.branch.outputs.name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Image Tag**: ${{ steps.meta.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Short SHA**: ${{ steps.meta.outputs.short_sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "**ECR Repository**: ${{ env.ECR_REPOSITORY }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: \`${{ inputs.branch }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag**: \`${{ steps.meta.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image URI**: \`${{ steps.push.outputs.image_uri }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Full Image URI**:" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Step**: Run the **CD** workflow to deploy this image:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.push.outputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
+          echo "image_tag:   ${{ steps.meta.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "environment: staging  (or demo / production)" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
