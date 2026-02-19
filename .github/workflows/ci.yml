@@ -17,7 +17,7 @@ on:
 
 env:
   AWS_REGION: ap-south-1
-  ECR_REPOSITORY: shipsmart-api
+  ECR_REPOSITORY: shipsmart
 
 concurrency:
   group: build-${{ inputs.branch }}
