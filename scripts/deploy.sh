@@ -19,7 +19,7 @@ fi
 # AWS Configuration
 AWS_REGION="ap-south-1"
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-YOUR_AWS_ACCOUNT_ID}"
-ECR_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/shipsmart-api:${IMAGE_TAG}"
+ECR_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/shipsmart:${IMAGE_TAG}"
 
 echo "========================================="
 echo "ShipSmart AI API - Deployment"
@@ -36,19 +36,19 @@ case $ENVIRONMENT in
     CLUSTER="shipsmart-dev-cluster"
     SERVICE="shipsmart-dev-service"
     TASK_FAMILY="shipsmart-dev-task"
-    CONTAINER_NAME="shipsmart-api"
+    CONTAINER_NAME="shipsmart"
     ;;
   staging)
     CLUSTER="shipsmart-staging-cluster"
     SERVICE="shipsmart-staging-service"
     TASK_FAMILY="shipsmart-staging-task"
-    CONTAINER_NAME="shipsmart-api"
+    CONTAINER_NAME="shipsmart"
     ;;
   production)
     CLUSTER="shipsmart-prod-cluster"
     SERVICE="shipsmart-prod-service"
     TASK_FAMILY="shipsmart-prod-task"
-    CONTAINER_NAME="shipsmart-api"
+    CONTAINER_NAME="shipsmart"
     ;;
   *)
     echo "ERROR: Unknown environment: ${ENVIRONMENT}"
@@ -78,7 +78,7 @@ echo ""
 # =============================================================================
 echo "Step 2: Verifying image exists in ECR..."
 if ! aws ecr describe-images \
-  --repository-name shipsmart-api \
+  --repository-name shipsmart \
   --image-ids imageTag=${IMAGE_TAG} \
   --region ${AWS_REGION} >/dev/null 2>&1; then
   echo "ERROR: Image not found in ECR: ${ECR_IMAGE}"
