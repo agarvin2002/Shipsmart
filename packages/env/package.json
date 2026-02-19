@@ -12,6 +12,7 @@
   "author": "ShipSmart",
   "license": "UNLICENSED",
   "dependencies": {
+    "dotenv": "^16.0.0",
     "nconf": "^0.12.0"
   }
 }
