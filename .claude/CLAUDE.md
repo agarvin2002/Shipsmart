@@ -138,6 +138,7 @@ throw new NotFoundError('Rate not found');
 ## Verification Commands
 
 ```bash
+cp .env.example .env              # First time only — copy env template and fill in local secrets
 yarn lint                         # Must pass - ESLint (Airbnb base)
 cd service && yarn test           # Must pass - Jest 29.7 (672+ tests, 73%+ coverage)
 cd service && yarn test:coverage  # Check coverage thresholds (50% branches, 60% functions/lines)
@@ -165,4 +166,4 @@ Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `security`
 4. **Never put business logic in controllers**: Extract to service layer
 5. **Never use models directly in services**: Use repository layer
 6. **Never use `cors()` without origin restrictions**: Environment-based whitelist required
-7. **Never commit real secrets**: Config files use placeholder values only
+7. **Never commit real secrets**: Secrets live in `.env` (local, gitignored) or AWS Secrets Manager (staging/production). Config JSON files must never contain passwords, JWT secrets, or encryption keys
