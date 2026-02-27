@@ -12,6 +12,7 @@ const RedisConfig = {
   host: redisConfig.host,
   port: redisConfig.port,
   ...(redisConfig.password) ? { auth_pass: redisConfig.password } : {},
+  ...(redisConfig.tls) ? { tls: { servername: redisConfig.host } } : {},
 };
 
 /**
