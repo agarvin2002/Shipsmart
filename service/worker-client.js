@@ -8,11 +8,13 @@ class WorkerClient {
   }
 
   initialize() {
+    const redisConf = this.bullConfig.default_redis;
     this.redisConfig = {
       redis: {
-        port: this.bullConfig.default_redis.port,
-        host: this.bullConfig.default_redis.host,
-        password: this.bullConfig.default_redis.password || undefined,
+        port: redisConf.port,
+        host: redisConf.host,
+        password: redisConf.password || undefined,
+        ...(redisConf.tls) ? { tls: {} } : {},
       },
     };
     return this;
