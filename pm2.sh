@@ -43,23 +43,23 @@ mkdir -p ./logs
 killall -9 /usr/bin/node
 npx pm2 delete all
 
-# Start PM2 processes (logs handled by Winston, PM2 logs disabled)
+# Start PM2 processes (stdout/stderr forwarded to container stdout for CloudWatch)
 npx pm2 start service/bin/server --update-env \
   --name shipsmart-api \
-  --error /dev/null \
-  --output /dev/null \
+  --error /proc/1/fd/2 \
+  --output /proc/1/fd/1 \
   --time
 
 npx pm2 start service/bin/worker --update-env \
   --name shipsmart-worker \
-  --error /dev/null \
-  --output /dev/null \
+  --error /proc/1/fd/2 \
+  --output /proc/1/fd/1 \
   --time
 
 npx pm2 start service/bin/arena --update-env \
   --name shipsmart-arena \
-  --error /dev/null \
-  --output /dev/null \
+  --error /proc/1/fd/2 \
+  --output /proc/1/fd/1 \
   --time
 
 # Save PM2 process list
