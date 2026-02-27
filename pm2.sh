@@ -65,5 +65,13 @@ npx pm2 start service/bin/arena --update-env \
 # Save PM2 process list
 npx pm2 save
 
-#Not Sleep
-sleep infinity
+# Pre-create log files so tail starts immediately (Winston writes here)
+touch /root/shipsmart-ai-api/logs/api.log \
+      /root/shipsmart-ai-api/logs/worker.log \
+      /root/shipsmart-ai-api/logs/arena.log
+
+# Tail log files to container stdout so awslogs driver sends them to CloudWatch.
+# This also keeps the container alive (replaces sleep infinity).
+exec tail -F /root/shipsmart-ai-api/logs/api.log \
+             /root/shipsmart-ai-api/logs/worker.log \
+             /root/shipsmart-ai-api/logs/arena.log
