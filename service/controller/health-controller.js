@@ -6,10 +6,9 @@ class HealthController {
     try {
       const health = await healthService.getHealthStatus();
 
-      // Set HTTP status code based on health status
-      const statusCode = health.status === 'OK' ? 200 : 503;
-
-      return res.status(statusCode).json(health);
+      // Always return 200 so ALB health checks pass even when DB/Redis are degraded.
+      // The health status details are in the response body.
+      return res.status(200).json(health);
     } catch (error) {
       next(error);
     }

@@ -42,8 +42,11 @@ class HealthService {
   }
 
   async _checkDatabase() {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('DB health check timed out after 10s')), 10000)
+    );
     try {
-      await db.sequelize.authenticate();
+      await Promise.race([db.sequelize.authenticate(), timeout]);
       return {
         status: 'connected',
         type: 'PostgreSQL'
@@ -65,13 +68,19 @@ class HealthService {
       };
     }
 
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Redis health check timed out after 10s')), 10000)
+    );
     try {
-      await new Promise((resolve, reject) => {
-        this.redisClient.ping((err, reply) => {
-          if (err) reject(err);
-          else resolve(reply);
-        });
-      });
+      await Promise.race([
+        new Promise((resolve, reject) => {
+          this.redisClient.ping((err, reply) => {
+            if (err) reject(err);
+            else resolve(reply);
+          });
+        }),
+        timeout
+      ]);
       return {
         status: 'connected',
         type: 'Redis'
