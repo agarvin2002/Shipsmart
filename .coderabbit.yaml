@@ -147,11 +147,32 @@ reviews:
     enabled: true
     style: "conventional"
 
-  # Code guidelines - point to existing documentation
-  code_guidelines:
-    - "docs/DEVELOPMENT-HANDBOOK.md"
-    - ".claude/CLAUDE.md"
-    - "README.md"
+  # Exclude files from review
+  path_filters:
+    - "!node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/*.min.js"
+    - "!.yarn/**"
+    - "!.pnp.*"
+    - "!yarn.lock"
+    - "!package-lock.json"
+    - "!.yarnrc.yml"
+    - "!config/*.json"
+    - "!.env*"
+    - "!terraform/**"
+    - "!Dockerfile"
+    - "!docker-compose.yml"
+    - "!nginx/**"
+    - "!Makefile"
+    - "!pm2.sh"
+    - "!service/__tests__/utils/**/*-fixtures.js"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.svg"
+    - "!**/*.gif"
+    - "!postman/**"
+    - "!scripts/**"
 
 # Tools configuration
 tools:
@@ -171,44 +192,3 @@ tools:
 chat:
   auto_reply: true
 
-# Ignore patterns - don't review these files
-ignore:
-  # Dependencies and generated files
-  - "node_modules/**"
-  - "**/dist/**"
-  - "**/build/**"
-  - "**/*.min.js"
-  - ".yarn/**"
-  - ".pnp.*"
-
-  # Lock files
-  - "yarn.lock"
-  - "package-lock.json"
-  - ".yarnrc.yml"
-
-  # Environment and config files (contain sensitive data)
-  - "config/*.json"
-  - ".env*"
-
-  # Infrastructure as code (reviewed separately)
-  - "terraform/**"
-  - "Dockerfile"
-  - "docker-compose.yml"
-  - "nginx/**"
-  - "Makefile"
-  - "pm2.sh"
-
-  # Test fixtures (data files, not logic)
-  - "service/__tests__/utils/**/*-fixtures.js"
-
-  # Documentation images and assets
-  - "**/*.png"
-  - "**/*.jpg"
-  - "**/*.svg"
-  - "**/*.gif"
-
-  # Postman collections (JSON data)
-  - "postman/**"
-
-  # Scripts (reviewed manually due to security implications)
-  - "scripts/**"

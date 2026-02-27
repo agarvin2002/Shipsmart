@@ -18,7 +18,7 @@ fi
 
 # AWS Configuration
 AWS_REGION="ap-south-1"
-AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-YOUR_AWS_ACCOUNT_ID}"
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/shipsmart:${IMAGE_TAG}"
 
 echo "========================================="
@@ -127,24 +127,27 @@ echo ""
 # =============================================================================
 echo "Step 5: Updating task definition with new image..."
 
-# Get current task definition
-TASK_DEF_JSON=$(aws ecs describe-task-definition \
+# Get current task definition and write to temp file
+TASK_DEF_TMP=$(mktemp)
+aws ecs describe-task-definition \
   --task-definition ${TASK_FAMILY} \
   --region ${AWS_REGION} \
-  --query 'taskDefinition')
+  --query 'taskDefinition' > "$TASK_DEF_TMP"
 
-# Extract relevant fields and update image
-NEW_TASK_DEF=$(echo $TASK_DEF_JSON | jq --arg IMAGE "$ECR_IMAGE" \
+# Extract relevant fields, update image, write to another temp file
+NEW_TASK_DEF_TMP=$(mktemp)
+jq --arg IMAGE "$ECR_IMAGE" \
   'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy) |
-  .containerDefinitions[0].image = $IMAGE')
+  .containerDefinitions[0].image = $IMAGE' "$TASK_DEF_TMP" > "$NEW_TASK_DEF_TMP"
 
-# Register new task definition
-NEW_TASK_DEF_ARN=$(echo $NEW_TASK_DEF | \
-  aws ecs register-task-definition \
-    --cli-input-json file:///dev/stdin \
-    --region ${AWS_REGION} \
-    --query 'taskDefinition.taskDefinitionArn' \
-    --output text)
+# Register new task definition from temp file
+NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+  --cli-input-json "file://${NEW_TASK_DEF_TMP}" \
+  --region ${AWS_REGION} \
+  --query 'taskDefinition.taskDefinitionArn' \
+  --output text)
+
+rm -f "$TASK_DEF_TMP" "$NEW_TASK_DEF_TMP"
 
 echo "✓ New task definition registered: ${NEW_TASK_DEF_ARN}"
 echo ""
